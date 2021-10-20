@@ -32,9 +32,6 @@ jobs:
       with:
         nuget-api-key: ${{ secrets.NuGetAPIKey }}
         nuget-version: 'latest'
-      
-    - name: restore nuget 
-      run: nuget restore FolderSizeCollection/packages.config -PackagesDirectory packages
      
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v1.0.2
