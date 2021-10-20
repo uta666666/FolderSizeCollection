@@ -38,7 +38,7 @@ jobs:
       
     - name: build core 
       run: |
-        dotnet publish FolderSizeCollection/FolderSizeCollection.csproj -c Release -r win-x64 --self-contained false -o ./App-win-x64
+        dotnet publish FolderSizeCollection/FolderSizeCollection.csproj -c Release -r win-x64 -p:PublishReadyToRun=true -p:PublishSingleFile=true --self-contained true -o ./App-win-x64
         7z a -tzip ./App-win-x64.zip ./App-win-x64/*
       
     - name: Create Release
