@@ -2,30 +2,35 @@
     x:Class="FolderSizeCollection.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:bh="clr-namespace:FolderSizeCollection.Views.Behaviors"
     xmlns:cv="clr-namespace:FolderSizeCollection.Views.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:FolderSizeCollection"
     xmlns:m="clr-namespace:FolderSizeCollection.Models"
-    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:uc="clr-namespace:FolderSizeCollection.Views.UserControls"
     xmlns:vm="clr-namespace:FolderSizeCollection.ViewModels"
+    xmlns:xb="http://schemas.microsoft.com/xaml/behaviors"
     Title="MainWindow"
     Width="800"
     Height="580"
+    ResizeMode="CanResizeWithGrip"
     TextElement.FontSize="13"
     TextElement.FontWeight="Regular"
     TextOptions.TextFormattingMode="Ideal"
     TextOptions.TextRenderingMode="Auto"
     mc:Ignorable="d">
-    <!--
-        Background="{DynamicResource MaterialDesignPaper}"
-        FontFamily="{DynamicResource MaterialDesignFont}"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}">
-    -->
 
     <Window.Resources>
+        <!--  Converter  -->
+        <cv:LevelToIndentConverter x:Key="LevelIndentConverter" />
+        <cv:ScanCommandConverter x:Key="ScanCommandConverter" />
+        <!--  IsScanning="{Binding Path=DataContext.IsScanning.Value, Mode=OneWay}" />  -->
 
+        <!--  Behaviors  -->
+        <bh:ScanButtonBehavior x:Key="ScanCommandBehavior" />
+
+        <!--  ↓↓↓↓↓Tree用のStyle↓↓↓↓↓  -->
         <Style x:Key="ExpandCollapseToggleStyle" TargetType="{x:Type ToggleButton}">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="Width" Value="19" />
@@ -80,8 +85,6 @@
             </Setter>
         </Style>
 
-        <cv:LevelToIndentConverter x:Key="LevelIndentConverter" />
-
         <DataTemplate x:Key="CellTemplate_Name">
             <DockPanel>
                 <ToggleButton
@@ -108,12 +111,11 @@
             <GridViewColumn Width="150" Header="サイズ（Bytes）">
                 <GridViewColumn.CellTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding Size, StringFormat={}{0:#,###}}" TextAlignment="Right" />
+                        <TextBlock Text="{Binding Size, StringFormat={}{0:N0}}" TextAlignment="Right" />
                     </DataTemplate>
                 </GridViewColumn.CellTemplate>
             </GridViewColumn>
         </GridViewColumnCollection>
-
 
         <Style TargetType="{x:Type uc:TreeListViewItem}">
             <Setter Property="Template">
@@ -172,7 +174,6 @@
             </Setter>
         </Style>
 
-
         <Style TargetType="{x:Type uc:TreeListView}">
             <Setter Property="Template">
                 <Setter.Value>
@@ -187,9 +188,8 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
+        <!--  ↑↑↑↑↑Tree用のStyle↑↑↑↑↑  -->
     </Window.Resources>
-
 
     <Window.DataContext>
         <vm:MainViewModel />
@@ -197,11 +197,13 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="100" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="45" />
             <RowDefinition Height="80" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="80" />
+            <RowDefinition Height="30" />
         </Grid.RowDefinitions>
+
         <StackPanel Grid.Row="0" Orientation="Horizontal">
             <StackPanel.Resources>
                 <Style x:Key="ScanImageStyle" TargetType="Path">
@@ -228,7 +230,7 @@
             <ComboBox
                 x:Name="driveComboBox"
                 Width="140"
-                Height="60"
+                Height="40"
                 Margin="30,18,10,0"
                 VerticalAlignment="Top"
                 FontSize="16"
@@ -249,11 +251,25 @@
             <Button
                 Grid.Row="0"
                 Width="120"
-                Height="60"
+                Height="40"
                 Margin="10,18,0,0"
-                VerticalAlignment="Top"
-                Command="{Binding ScanDriveCommand}"
-                CommandParameter="{Binding SelectedValue, ElementName=driveComboBox}">
+                VerticalAlignment="Top">
+                <!--
+                    Command="{Binding ScanDriveCommand}"
+                    CommandParameter="{Binding SelectedValue, ElementName=driveComboBox}">
+                -->
+                <Button.Command>
+                    <MultiBinding Converter="{StaticResource ScanCommandConverter}" UpdateSourceTrigger="Explicit">
+                        <Binding Path="ScanDriveCommand" />
+                        <Binding Path="StopScanDriveCommand" />
+                        <Binding Path="IsScanning.Value" />
+                    </MultiBinding>
+                </Button.Command>
+
+                <Button.CommandParameter>
+                    <Binding ElementName="driveComboBox" Path="SelectedValue" />
+                </Button.CommandParameter>
+
                 <StackPanel Orientation="Horizontal">
                     <Path
                         x:Name="ScanImage"
@@ -268,6 +284,9 @@
                         Style="{StaticResource ScanTextStyle}" />
                 </StackPanel>
 
+                <xb:Interaction.Behaviors>
+                    <bh:ScanButtonBehavior IsScanning="{Binding IsScanning.Value, Mode=OneWay}" />
+                </xb:Interaction.Behaviors>
             </Button>
         </StackPanel>
 
@@ -280,7 +299,6 @@
                 </Style>
             </TreeView.Resources>
         </TreeView>-->
-
         <!--<ListView
             Grid.Row="1"
             Background="{DynamicResource MaterialDesignBackground}"
@@ -327,41 +345,6 @@
                 </Style>
             </ListView.ItemContainerStyle>
         </ListView>-->
-
-
-        <Border
-            Grid.Row="1"
-            BorderBrush="Black"
-            BorderThickness="1">
-            <ScrollViewer Grid.Row="1">
-                <uc:TreeListView
-                    BorderThickness="0"
-                    ItemsSource="{Binding TreeSource.Value}"
-                    ScrollViewer.CanContentScroll="True"
-                    ScrollViewer.HorizontalScrollBarVisibility="Visible"
-                    ScrollViewer.VerticalScrollBarVisibility="Visible">
-                    <uc:TreeListView.Resources>
-                        <Style TargetType="TreeViewItem">
-                            <Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}" />
-                        </Style>
-                    </uc:TreeListView.Resources>
-                    <uc:TreeListView.ItemTemplate>
-                        <HierarchicalDataTemplate DataType="{x:Type m:TreeSource}" ItemsSource="{Binding Children}">
-                            <TextBlock Text="{Binding Text}" />
-                        </HierarchicalDataTemplate>
-                    </uc:TreeListView.ItemTemplate>
-                </uc:TreeListView>
-            </ScrollViewer>
-        </Border>
-
-        <Label
-            Grid.Row="2"
-            BorderThickness="5"
-            Content="{Binding Logtext.Value}" />
-
-        <ListBox Grid.Row="3" ItemsSource="{Binding LogList}" ScrollViewer.VerticalScrollBarVisibility="Visible"/>
-
-
         <!--<uc:TreeListView Grid.Row="1">
 
             <uc:TreeListViewItem>
@@ -564,6 +547,46 @@
             </uc:TreeListViewItem>
 
         </uc:TreeListView>-->
+
+        <Border
+            Grid.Row="1"
+            BorderBrush="DarkGray"
+            BorderThickness="1">
+            <ScrollViewer Grid.Row="1">
+                <uc:TreeListView
+                    BorderThickness="0"
+                    ItemsSource="{Binding TreeSource.Value}"
+                    ScrollViewer.CanContentScroll="True"
+                    ScrollViewer.HorizontalScrollBarVisibility="Visible"
+                    ScrollViewer.VerticalScrollBarVisibility="Visible">
+                    <uc:TreeListView.Resources>
+                        <Style TargetType="TreeViewItem">
+                            <Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}" />
+                        </Style>
+                    </uc:TreeListView.Resources>
+                    <uc:TreeListView.ItemTemplate>
+                        <HierarchicalDataTemplate DataType="{x:Type m:TreeSource}" ItemsSource="{Binding Children}">
+                            <TextBlock Text="{Binding Text}" />
+                        </HierarchicalDataTemplate>
+                    </uc:TreeListView.ItemTemplate>
+                </uc:TreeListView>
+            </ScrollViewer>
+        </Border>
+
+        <GridSplitter
+            Grid.Row="2"
+            Height="5"
+            HorizontalAlignment="Stretch" />
+
+        <ListBox
+            Grid.Row="3"
+            ItemsSource="{Binding LogList}"
+            ScrollViewer.VerticalScrollBarVisibility="Visible" />
+
+        <StatusBar Grid.Row="4">
+            <StatusBarItem Content="{Binding Logtext.Value}" />
+            <!--<Label BorderThickness="5" Content="{Binding Logtext.Value}" />-->
+        </StatusBar>
 
     </Grid>
 </Window>

@@ -19,24 +19,28 @@ namespace FolderSizeCollection.Models
         private List<TreeSource> _Children = null;
 
 
-        public bool IsExpanded {
+        public bool IsExpanded
+        {
             get { return _IsExpanded; }
             set { _IsExpanded = value; }
         }
 
-        public string Text {
+        public string Text
+        {
             get { return _Text; }
             set { _Text = value; }
         }
 
         public long Size { get; set; }
 
-        public TreeSource Parent {
+        public TreeSource Parent
+        {
             get { return _Parent; }
             set { _Parent = value; }
         }
 
-        public List<TreeSource> Children {
+        public List<TreeSource> Children
+        {
             get { return _Children; }
             set { _Children = value; }
         }
@@ -57,11 +61,14 @@ namespace FolderSizeCollection.Models
         {
         }
 
-        public string Logtext {
-            get {
+        public string Logtext
+        {
+            get
+            {
                 return _logtext;
             }
-            set {
+            set
+            {
                 if (_logtext == value) return;
                 _logtext = value;
                 RaisePropertChanged(nameof(Logtext));
@@ -72,9 +79,9 @@ namespace FolderSizeCollection.Models
         /// 
         /// </summary>
         public event EventHandler<ReadingFileEventArgs> ReadingFile;
-        protected void OnReadingFile(string fileName)
+        protected void OnReadingFile(string fileName, bool isError)
         {
-            ReadingFile?.Invoke(null, new ReadingFileEventArgs() { FileName = fileName });
+            ReadingFile?.Invoke(null, new ReadingFileEventArgs(fileName, isError));
         }
 
         /// <summary>
@@ -109,12 +116,20 @@ namespace FolderSizeCollection.Models
         /// 
         /// </summary>
         /// <param name="path"></param>
+        /// <param name="token"></param>
         /// <returns></returns>
-        public Task<TreeSource> MakeInstanceAsync(string path)
+        public Task<TreeSource> MakeInstanceAsync(string path, CancellationToken token)
         {
-            var t = GetDirectoriesAsync(path, true);
-            //OnReadFileCompleted();
-            return t;
+            try
+            {
+                var t = GetDirectoriesAsync(path, true, token);
+                //OnReadFileCompleted();
+                return t;
+            }
+            catch (OperationCanceledException)
+            {
+                return Task.FromResult<TreeSource>(null);
+            }
         }
 
 
@@ -155,10 +170,16 @@ namespace FolderSizeCollection.Models
         }
 
 
-        private async Task<TreeSource> GetDirectoriesAsync(string path, bool isRoot)
+        private async Task<TreeSource> GetDirectoriesAsync(string path, bool isRoot, CancellationToken token)
         {
+            if (token.IsCancellationRequested)
+            {
+                OnReadingFile("キャンセルしました。", true);
+                token.ThrowIfCancellationRequested();
+                return null;
+            }
             //Logtext = path;
-            OnReadingFile(path);
+            OnReadingFile(path, false);
 
             var src = new TreeSource();
 
@@ -168,13 +189,13 @@ namespace FolderSizeCollection.Models
 
                 await Directory.EnumerateDirectories(path).ForEachAsync((Func<string, Task>)(async dir =>
                 {
-                    var temp = await GetDirectoriesAsync(dir, false);
+                    var temp = await GetDirectoriesAsync(dir, false, token);
                     if (temp != null)
                     {
                         size += temp.Size;
                         src.Add((TreeSource)temp);
                     }
-                }), 200);
+                }), 200, token);
 
                 var fileSize = DirectoryUtil.EnumerateFilesData(path).Sum(n => n.Length);
                 if (fileSize > 0)
@@ -194,7 +215,7 @@ namespace FolderSizeCollection.Models
             catch (UnauthorizedAccessException ex)
             {
                 //System.Diagnostics.Debug.WriteLine($"{path} {ex.Message}");
-                OnReadingFile($"{path} {ex.Message}");
+                OnReadingFile($"{path} \"{ex.Message}\"", true);
                 return null;
             }
             catch (DirectoryNotFoundException ex)
@@ -310,7 +331,15 @@ namespace FolderSizeCollection.Models
 
     public class ReadingFileEventArgs : EventArgs
     {
-        public string FileName { get; set; }
+        public ReadingFileEventArgs(string fileName, bool isError)
+        {
+            FileName = fileName;
+            IsError = isError;
+        }
+
+        public string FileName { get; }
+
+        public bool IsError { get; }
     }
 
 
