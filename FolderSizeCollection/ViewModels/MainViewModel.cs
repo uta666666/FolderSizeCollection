@@ -11,6 +11,8 @@ using Reactive.Bindings.Extensions;
 using System.Windows;
 using System.Collections.ObjectModel;
 using System.Threading;
+using System.Diagnostics;
+using System.Windows.Controls;
 
 namespace FolderSizeCollection.ViewModels
 {
@@ -18,27 +20,35 @@ namespace FolderSizeCollection.ViewModels
     {
         public MainViewModel()
         {
+            _log = new Log();
+
             Drives = new ReactiveProperty<IEnumerable<DriveData>>(Directory.GetLogicalDrives().Select(n => new DriveData(n)).OrderBy(n => n.Drive));
             //Drives.Value = Directory.GetLogicalDrives().Select(n => new DriveData(n)).OrderBy(n => n.Drive);
             //    .Select(n => {
             //    var drv = new DriveInfo(n.Substring(0, 1));
             //    return $"{drv.Name} : {drv.VolumeLabel}";
             //});
-
             SelectedDrive = new ReactiveProperty<DriveData>(Drives.Value.FirstOrDefault());
             TreeSource = new ReactiveProperty<List<TreeSource>>();
-            Logtext = new ReactiveProperty<string>();
+            SelectedTreeSource = new ReactiveProperty<TreeSource>();
             LogList = new ObservableCollection<string>();
+            Logtext = _log.ObserveProperty(n => n.Value).ToReactiveProperty();
+            Status = new ReactiveProperty<string>();
             IsScanning = new ReactiveProperty<bool>();
 
             var factory = new TreeSourceFactory();
-            //Logtext = factory.ObserveProperty(n => n.Logtext).ToReactiveProperty();
 
             ScanDriveCommand = new ReactiveCommand<DriveData>();
             ScanDriveCommand.Subscribe(async n =>
             {
+                Status.Value = $"[{n.Drive}]のサイズ計測中・・・";
+
                 _fileCount = 0;
                 LogList.Clear();
+                if (TreeSource.Value != null)
+                {
+                    TreeSource.Value = null;
+                }
 
                 _cancelSource = new CancellationTokenSource();
                 var token = _cancelSource.Token;
@@ -56,6 +66,8 @@ namespace FolderSizeCollection.ViewModels
                         IsScanning.Value = false;
                     }
                 });
+
+                Status.Value = $"[{n.Drive}]のサイズ計測完了";
             });
 
             StopScanDriveCommand = new ReactiveCommand();
@@ -64,40 +76,81 @@ namespace FolderSizeCollection.ViewModels
                 _cancelSource.Cancel();
             });
 
+            OpenExploreCommand = SelectedTreeSource.Select(n => n != null).ToReactiveCommand<TreeSource>();
+            //OpenExploreCommand = new ReactiveCommand<TreeSource>();
+            OpenExploreCommand.Subscribe(n =>
+            {
+                Status.Value = string.Empty;
+
+                if (Directory.Exists(n.Path))
+                {
+                    Process.Start("EXPLORER.EXE", n.Path);
+                }
+                else if(Directory.Exists(n.Parent.Path))
+                {
+                    Process.Start("EXPLORER.EXE", n.Parent.Path);
+                }
+                else
+                {
+                    Status.Value = "フォルダが見つかりませんでした。";
+                    //_ = Task.Delay(10 * 1000).ContinueWith(n => Status.Value = string.Empty);
+                }
+            });
+
             factory.ReadingFile += TreeSourceFactory_ReadingFile;
         }
 
         private void TreeSourceFactory_ReadingFile(object sender, ReadingFileEventArgs e)
         {
-            _ = Application.Current.Dispatcher.InvokeAsync(() =>
-              {
-                  if (e.IsError)
+            try
+            {
+                _ = Application.Current.Dispatcher.InvokeAsync(() =>
                   {
-                      LogList.Add(e.FileName);
-                  }
-                  Logtext.Value = $"{++_fileCount}";
-              },
-            System.Windows.Threading.DispatcherPriority.Background);
+                      if (e.IsError)
+                      {
+                          //LogList.Add(e.ToString());
+                          _log.Add(e.ToString());
+                      }
+                      ++_fileCount;
+                  },
+                System.Windows.Threading.DispatcherPriority.Background);
+            }
+            catch
+            {
+                //errorは無視
+            }
         }
 
+        private Log _log;
         private long _fileCount;
         private CancellationTokenSource _cancelSource;
 
+
+        //Property-----------------------------------------------------------------
         public ReactiveProperty<IEnumerable<DriveData>> Drives { get; set; }
 
         public ReactiveProperty<DriveData> SelectedDrive { get; set; }
 
         public ReactiveProperty<List<TreeSource>> TreeSource { get; set; }
 
-        public ReactiveProperty<string> Logtext { get; set; }
+        public ReactiveProperty<TreeSource> SelectedTreeSource { get; set; }
 
         public ObservableCollection<string> LogList { get; set; }
 
+        public ReactiveProperty<string> Logtext { get; set; }
+
+        public ReactiveProperty<string> Status { get; set; }
+
         public ReactiveProperty<bool> IsScanning { get; set; }
+        //Property-----------------------------------------------------------------
 
 
+        //Command--------------------------------------------------------------------
         public ReactiveCommand<DriveData> ScanDriveCommand { get; private set; }
 
         public ReactiveCommand StopScanDriveCommand { get; private set; }
+
+        public ReactiveCommand<TreeSource> OpenExploreCommand { get; private set; }
+        //Command--------------------------------------------------------------------
     }
 }

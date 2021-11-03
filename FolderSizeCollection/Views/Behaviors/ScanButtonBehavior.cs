@@ -32,18 +32,5 @@ namespace FolderSizeCollection.Views.Behaviors
             //var be = (d as ScanButtonBehavior).AssociatedObject.GetMul(System.Windows.Controls.Primitives.ButtonBase.CommandProperty);
             be.UpdateTarget();
         }
-
-        protected override void OnAttached()
-        {
-            base.OnAttached();
-
-            //AssociatedObject.Click += AssociatedObject_Click;
-        }
-
-        private void AssociatedObject_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            var be = AssociatedObject.GetBindingExpression(Button.CommandProperty);
-            
-        }
     }
 }

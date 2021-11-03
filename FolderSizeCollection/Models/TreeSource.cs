@@ -13,38 +13,39 @@ namespace FolderSizeCollection.Models
 {
     public class TreeSource
     {
-        private bool _IsExpanded = true;
-        private string _Text = "";
-        private TreeSource _Parent = null;
-        private List<TreeSource> _Children = null;
-
-
-        public bool IsExpanded
-        {
-            get { return _IsExpanded; }
-            set { _IsExpanded = value; }
-        }
-
-        public string Text
-        {
-            get { return _Text; }
-            set { _Text = value; }
-        }
-
+        /// <summary>
+        /// 展開しているか
+        /// </summary>
+        public bool IsExpanded { get; set; }
+        /// <summary>
+        /// 表示用文字列
+        /// </summary>
+        public string Text { get; set; }
+        /// <summary>
+        /// サイズ
+        /// </summary>
         public long Size { get; set; }
+        /// <summary>
+        /// フォルダのパス
+        /// </summary>
+        public string Path { get; set; }
+        /// <summary>
+        /// ファイル
+        /// </summary>
+        public bool IsFile { get; set; }
+        /// <summary>
+        /// 親要素
+        /// </summary>
+        public TreeSource Parent { get; set; }
+        /// <summary>
+        /// 子要素
+        /// </summary>
+        public List<TreeSource> Children { get; set; }
 
-        public TreeSource Parent
-        {
-            get { return _Parent; }
-            set { _Parent = value; }
-        }
-
-        public List<TreeSource> Children
-        {
-            get { return _Children; }
-            set { _Children = value; }
-        }
-
+        /// <summary>
+        /// 子を追加する
+        /// </summary>
+        /// <param name="child"></param>
         public void Add(TreeSource child)
         {
             if (null == Children) Children = new List<TreeSource>();
@@ -79,9 +80,9 @@ namespace FolderSizeCollection.Models
         /// 
         /// </summary>
         public event EventHandler<ReadingFileEventArgs> ReadingFile;
-        protected void OnReadingFile(string fileName, bool isError)
+        protected void OnReadingFile(string fileName, string message, bool isError)
         {
-            ReadingFile?.Invoke(null, new ReadingFileEventArgs(fileName, isError));
+            ReadingFile?.Invoke(null, new ReadingFileEventArgs(fileName, message, isError));
         }
 
         /// <summary>
@@ -174,12 +175,13 @@ namespace FolderSizeCollection.Models
         {
             if (token.IsCancellationRequested)
             {
-                OnReadingFile("キャンセルしました。", true);
+                OnReadingFile(string.Empty, "キャンセルしました。", true);
                 token.ThrowIfCancellationRequested();
                 return null;
             }
+
             //Logtext = path;
-            OnReadingFile(path, false);
+            OnReadingFile(path, string.Empty, false);
 
             var src = new TreeSource();
 
@@ -200,14 +202,15 @@ namespace FolderSizeCollection.Models
                 var fileSize = DirectoryUtil.EnumerateFilesData(path).Sum(n => n.Length);
                 if (fileSize > 0)
                 {
-                    src.Add(new TreeSource() { Text = "Files", Size = fileSize });
+                    src.Add(new TreeSource() { Text = "Files", Size = fileSize, IsFile = true });
                 }
                 try
                 {
                     src.Children?.Sort((x, y) => ((y?.Size ?? 0) > (x?.Size ?? 0)) ? 1 : -1);
                 }
                 catch { }
-                //src.Text = path;
+
+                src.Path = path;
                 src.Text = isRoot ? Path.GetPathRoot(path) : Path.GetFileName(path);
                 //src.Size = size + Directory.EnumerateFiles(path).Sum(n => new ZlpFileInfo(n).Length); ;
                 src.Size = size + fileSize;
@@ -215,7 +218,7 @@ namespace FolderSizeCollection.Models
             catch (UnauthorizedAccessException ex)
             {
                 //System.Diagnostics.Debug.WriteLine($"{path} {ex.Message}");
-                OnReadingFile($"{path} \"{ex.Message}\"", true);
+                OnReadingFile(path, ex.Message, true);
                 return null;
             }
             catch (DirectoryNotFoundException ex)
@@ -331,15 +334,30 @@ namespace FolderSizeCollection.Models
 
     public class ReadingFileEventArgs : EventArgs
     {
-        public ReadingFileEventArgs(string fileName, bool isError)
+        public ReadingFileEventArgs(string fileName, string message, bool isError)
         {
             FileName = fileName;
+            Message = message;
             IsError = isError;
         }
 
         public string FileName { get; }
 
+        public string Message { get; }
+
         public bool IsError { get; }
+
+        public override string ToString()
+        {
+            if (string.IsNullOrWhiteSpace(FileName))
+            {
+                return Message;
+            }
+            else
+            {
+                return $"[{FileName}] {Message}";
+            }
+        }
     }
 
 

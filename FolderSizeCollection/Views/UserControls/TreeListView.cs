@@ -11,6 +11,8 @@ namespace FolderSizeCollection.Views.UserControls
         {   
             this.SetValue(VirtualizingStackPanel.IsVirtualizingProperty, true);
             this.SetValue(VirtualizingStackPanel.VirtualizationModeProperty, VirtualizationMode.Recycling);
+
+            this.SelectedItemChanged += this.OnSelectedItemChanged;
         }
 
         protected override DependencyObject GetContainerForItemOverride()
@@ -21,6 +23,31 @@ namespace FolderSizeCollection.Views.UserControls
         protected override bool IsItemItsOwnContainerOverride(object item)
         {
             return item is TreeListViewItem;
+        }
+
+
+
+
+
+        public static readonly DependencyProperty BindableSelectedItemProperty = DependencyProperty.Register(nameof(BindableSelectedItem), typeof(object), typeof(TreeListView), new UIPropertyMetadata(null));
+
+        /// <summary>
+        /// Bind 可能な SelectedItem を表し、SelectedItem を設定または取得します。
+        /// </summary>
+        public object BindableSelectedItem
+        {
+            get { return (object)GetValue(BindableSelectedItemProperty); }
+            set { SetValue(BindableSelectedItemProperty, value); }
+        }
+
+        protected virtual void OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (SelectedItem == null)
+            {
+                return;
+            }
+
+            SetValue(BindableSelectedItemProperty, SelectedItem);
         }
     }
 

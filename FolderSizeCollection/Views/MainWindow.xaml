@@ -7,16 +7,20 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:FolderSizeCollection"
     xmlns:m="clr-namespace:FolderSizeCollection.Models"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:uc="clr-namespace:FolderSizeCollection.Views.UserControls"
     xmlns:vm="clr-namespace:FolderSizeCollection.ViewModels"
     xmlns:xb="http://schemas.microsoft.com/xaml/behaviors"
-    Title="MainWindow"
+    Title="フォルダのサイズを調べる"
     Width="800"
     Height="580"
+    Background="{DynamicResource MaterialDesignPaper}"
+    FontFamily="{DynamicResource MaterialDesignFont}"
     ResizeMode="CanResizeWithGrip"
     TextElement.FontSize="13"
     TextElement.FontWeight="Regular"
+    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     TextOptions.TextFormattingMode="Ideal"
     TextOptions.TextRenderingMode="Auto"
     mc:Ignorable="d">
@@ -67,7 +71,7 @@
                                 x:Name="ExpandPath"
                                 Margin="1,1,1,1"
                                 Data="M 0,0 L 0,10 L 10, 5 Z"
-                                Fill="Black"
+                                Fill="{StaticResource PrimaryHueLightBrush}"
                                 RenderTransformOrigin="0.5,0.5">
                                 <Path.RenderTransform>
                                     <ScaleTransform ScaleX="0.5" ScaleY="0.6" />
@@ -85,7 +89,7 @@
             </Setter>
         </Style>
 
-        <DataTemplate x:Key="CellTemplate_Name">
+        <DataTemplate x:Key="CellTemplateFileName">
             <DockPanel>
                 <ToggleButton
                     x:Name="Expander"
@@ -93,7 +97,7 @@
                     ClickMode="Press"
                     IsChecked="{Binding Path=IsExpanded, RelativeSource={RelativeSource AncestorType={x:Type uc:TreeListViewItem}}}"
                     Style="{StaticResource ExpandCollapseToggleStyle}" />
-                <TextBlock Text="{Binding Text}" />
+                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding Text}" />
             </DockPanel>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Path=HasItems, RelativeSource={RelativeSource AncestorType={x:Type uc:TreeListViewItem}}}" Value="False">
@@ -103,17 +107,28 @@
         </DataTemplate>
 
         <GridViewColumnCollection x:Key="gvcc">
-            <GridViewColumn
-                Width="400"
-                CellTemplate="{StaticResource CellTemplate_Name}"
-                Header="フォルダ名" />
+            <GridViewColumn Width="400" CellTemplate="{StaticResource CellTemplateFileName}">
+                <GridViewColumn.Header>
+                    <StackPanel VerticalAlignment="Stretch" Orientation="Horizontal">
+                        <TextBlock Text="パス" />
+                    </StackPanel>
+                </GridViewColumn.Header>
+            </GridViewColumn>
 
-            <GridViewColumn Width="150" Header="サイズ（Bytes）">
+            <GridViewColumn Width="150">
                 <GridViewColumn.CellTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding Size, StringFormat={}{0:N0}}" TextAlignment="Right" />
+                        <TextBlock
+                            Foreground="{DynamicResource MaterialDesignBody}"
+                            Text="{Binding Size, StringFormat={}{0:N0}}"
+                            TextAlignment="Right" />
                     </DataTemplate>
                 </GridViewColumn.CellTemplate>
+                <GridViewColumn.Header>
+                    <StackPanel VerticalAlignment="Stretch" Orientation="Horizontal">
+                        <TextBlock Text="サイズ（Bytes）" />
+                    </StackPanel>
+                </GridViewColumn.Header>
             </GridViewColumn>
         </GridViewColumnCollection>
 
@@ -157,14 +172,14 @@
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
                                 <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
                             </Trigger>
-                            <MultiTrigger>
+                            <!--<MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsSelected" Value="true" />
                                     <Condition Property="IsSelectionActive" Value="false" />
                                 </MultiTrigger.Conditions>
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
                                 <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
-                            </MultiTrigger>
+                            </MultiTrigger>-->
                             <Trigger Property="IsEnabled" Value="false">
                                 <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
                             </Trigger>
@@ -191,6 +206,13 @@
         <!--  ↑↑↑↑↑Tree用のStyle↑↑↑↑↑  -->
     </Window.Resources>
 
+    <Window.InputBindings>
+        <KeyBinding
+            Command="{Binding OpenExploreCommand}"
+            CommandParameter="{Binding SelectedTreeSource.Value}"
+            Gesture="Ctrl+O" />
+    </Window.InputBindings>
+
     <Window.DataContext>
         <vm:MainViewModel />
     </Window.DataContext>
@@ -200,7 +222,7 @@
             <RowDefinition Height="80" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="80" />
+            <RowDefinition Height="120" />
             <RowDefinition Height="30" />
         </Grid.RowDefinitions>
 
@@ -208,7 +230,7 @@
             <StackPanel.Resources>
                 <Style x:Key="ScanImageStyle" TargetType="Path">
                     <Setter Property="Data" Value="M 0,0 L 0,10 L 10,5 Z" />
-                    <Setter Property="Fill" Value="Green" />
+                    <Setter Property="Fill" Value="LightGreen" />
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsScanning.Value}" Value="true">
                             <Setter Property="Data" Value="M 0,0 L 10,0 L 10,10 L 0,10 Z" />
@@ -229,13 +251,16 @@
 
             <ComboBox
                 x:Name="driveComboBox"
-                Width="140"
-                Height="40"
+                Width="120"
+                Height="50"
                 Margin="30,18,10,0"
                 VerticalAlignment="Top"
+                materialDesign:ComboBoxAssist.ShowSelectedItem="True"
                 FontSize="16"
+                IsEnabled="{Binding IsScanning.Value, Converter={StaticResource InvertBooleanConverter}}"
                 ItemsSource="{Binding Drives.Value}"
-                SelectedItem="{Binding SelectedDrive.Value, Mode=TwoWay}">
+                SelectedItem="{Binding SelectedDrive.Value, Mode=TwoWay}"
+                Style="{StaticResource MaterialDesignOutlinedComboBox}">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
@@ -251,9 +276,13 @@
             <Button
                 Grid.Row="0"
                 Width="120"
-                Height="40"
+                Height="50"
                 Margin="10,18,0,0"
-                VerticalAlignment="Top">
+                VerticalAlignment="Top"
+                materialDesign:ButtonProgressAssist.IsIndeterminate="True"
+                materialDesign:ButtonProgressAssist.IsIndicatorVisible="{Binding IsScanning.Value}"
+                materialDesign:ButtonProgressAssist.Value="-1"
+                Style="{StaticResource MaterialDesignFlatDarkBgButton}">
                 <!--
                     Command="{Binding ScanDriveCommand}"
                     CommandParameter="{Binding SelectedValue, ElementName=driveComboBox}">
@@ -273,14 +302,14 @@
                 <StackPanel Orientation="Horizontal">
                     <Path
                         x:Name="ScanImage"
-                        Width="30"
-                        Height="30"
+                        Width="20"
+                        Height="20"
                         Stretch="UniformToFill"
                         Style="{StaticResource ScanImageStyle}" />
                     <TextBlock
                         Margin="10,0,0,0"
                         VerticalAlignment="Center"
-                        FontSize="20"
+                        FontSize="18"
                         Style="{StaticResource ScanTextStyle}" />
                 </StackPanel>
 
@@ -554,6 +583,9 @@
             BorderThickness="1">
             <ScrollViewer Grid.Row="1">
                 <uc:TreeListView
+                    x:Name="treeListViewSize"
+                    materialDesign:DataGridAssist.ColumnHeaderPadding="5 2 5 2"
+                    BindableSelectedItem="{Binding SelectedTreeSource.Value, Mode=TwoWay}"
                     BorderThickness="0"
                     ItemsSource="{Binding TreeSource.Value}"
                     ScrollViewer.CanContentScroll="True"
@@ -564,13 +596,28 @@
                             <Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}" />
                         </Style>
                     </uc:TreeListView.Resources>
+
                     <uc:TreeListView.ItemTemplate>
                         <HierarchicalDataTemplate DataType="{x:Type m:TreeSource}" ItemsSource="{Binding Children}">
                             <TextBlock Text="{Binding Text}" />
                         </HierarchicalDataTemplate>
                     </uc:TreeListView.ItemTemplate>
+
+                    <uc:TreeListView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem
+                                Command="{Binding OpenExploreCommand}"
+                                CommandParameter="{Binding SelectedTreeSource.Value}"
+                                Header="エクスプローラで開く(_O)"
+                                InputGestureText="Ctrl+O" />
+                        </ContextMenu>
+                    </uc:TreeListView.ContextMenu>
                 </uc:TreeListView>
             </ScrollViewer>
+
+            <xb:Interaction.Behaviors>
+                <bh:CursorBehavior IsScanning="{Binding IsScanning.Value}" />
+            </xb:Interaction.Behaviors>
         </Border>
 
         <GridSplitter
@@ -578,14 +625,23 @@
             Height="5"
             HorizontalAlignment="Stretch" />
 
-        <ListBox
+        <Border
             Grid.Row="3"
-            ItemsSource="{Binding LogList}"
-            ScrollViewer.VerticalScrollBarVisibility="Visible" />
+            BorderBrush="DarkGray"
+            BorderThickness="1">
+            <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+                <TextBlock
+                    FontSize="10"
+                    Text="{Binding Logtext.Value}"
+                    TextWrapping="NoWrap" />
+            </ScrollViewer>
+        </Border>
 
-        <StatusBar Grid.Row="4">
-            <StatusBarItem Content="{Binding Logtext.Value}" />
-            <!--<Label BorderThickness="5" Content="{Binding Logtext.Value}" />-->
+        <StatusBar
+            Grid.Row="4"
+            Background="{DynamicResource MaterialDesignPaper}"
+            Foreground="{DynamicResource MaterialDesignBody}">
+            <StatusBarItem Content="{Binding Status.Value}" />
         </StatusBar>
 
     </Grid>
