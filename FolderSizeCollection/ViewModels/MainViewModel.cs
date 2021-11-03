@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Reactive.Linq;
 using Reactive.Bindings.Extensions;
@@ -12,7 +11,6 @@ using System.Windows;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Diagnostics;
-using System.Windows.Controls;
 
 namespace FolderSizeCollection.ViewModels
 {
@@ -35,6 +33,7 @@ namespace FolderSizeCollection.ViewModels
             Logtext = _log.ObserveProperty(n => n.Value).ToReactiveProperty();
             Status = new ReactiveProperty<string>();
             IsScanning = new ReactiveProperty<bool>();
+            TreeFontSize = new ReactiveProperty<double>(13);
 
             var factory = new TreeSourceFactory();
 
@@ -142,6 +141,8 @@ namespace FolderSizeCollection.ViewModels
         public ReactiveProperty<string> Status { get; set; }
 
         public ReactiveProperty<bool> IsScanning { get; set; }
+
+        public ReactiveProperty<double> TreeFontSize { get; set; }
         //Property-----------------------------------------------------------------
 
 

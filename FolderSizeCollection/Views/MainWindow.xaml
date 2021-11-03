@@ -97,13 +97,24 @@
                     ClickMode="Press"
                     IsChecked="{Binding Path=IsExpanded, RelativeSource={RelativeSource AncestorType={x:Type uc:TreeListViewItem}}}"
                     Style="{StaticResource ExpandCollapseToggleStyle}" />
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding Text}" />
+                <TextBlock
+                    FontSize="{Binding DataContext.TreeFontSize.Value, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    Foreground="{DynamicResource MaterialDesignBody}"
+                    Text="{Binding Text}" />
             </DockPanel>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Path=HasItems, RelativeSource={RelativeSource AncestorType={x:Type uc:TreeListViewItem}}}" Value="False">
                     <Setter TargetName="Expander" Property="Visibility" Value="Hidden" />
                 </DataTrigger>
             </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="CellTemplateSize">
+            <TextBlock
+                FontSize="{Binding DataContext.TreeFontSize.Value, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Window}}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Foreground="{DynamicResource MaterialDesignBody}"
+                Text="{Binding Size, StringFormat={}{0:N0}}"
+                TextAlignment="Right" />
         </DataTemplate>
 
         <GridViewColumnCollection x:Key="gvcc">
@@ -115,15 +126,7 @@
                 </GridViewColumn.Header>
             </GridViewColumn>
 
-            <GridViewColumn Width="150">
-                <GridViewColumn.CellTemplate>
-                    <DataTemplate>
-                        <TextBlock
-                            Foreground="{DynamicResource MaterialDesignBody}"
-                            Text="{Binding Size, StringFormat={}{0:N0}}"
-                            TextAlignment="Right" />
-                    </DataTemplate>
-                </GridViewColumn.CellTemplate>
+            <GridViewColumn Width="150" CellTemplate="{StaticResource CellTemplateSize}">
                 <GridViewColumn.Header>
                     <StackPanel VerticalAlignment="Stretch" Orientation="Horizontal">
                         <TextBlock Text="サイズ（Bytes）" />
@@ -613,6 +616,10 @@
                         </ContextMenu>
                     </uc:TreeListView.ContextMenu>
                 </uc:TreeListView>
+
+                <xb:Interaction.Behaviors>
+                    <bh:FontSizeBehavior FontSize="{Binding TreeFontSize.Value, Mode=TwoWay}" />
+                </xb:Interaction.Behaviors>
             </ScrollViewer>
 
             <xb:Interaction.Behaviors>
