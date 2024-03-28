@@ -267,7 +267,10 @@
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
-                            <Image Source="{Binding Image}" />
+                            <Image
+                                Width="20"
+                                Height="20"
+                                Source="{Binding Image}" />
                             <TextBlock
                                 Margin="10,0,0,0"
                                 VerticalAlignment="Center"
@@ -590,7 +593,7 @@
                     materialDesign:DataGridAssist.ColumnHeaderPadding="5 2 5 2"
                     BindableSelectedItem="{Binding SelectedTreeSource.Value, Mode=TwoWay}"
                     BorderThickness="0"
-                    ItemsSource="{Binding TreeSource.Value}"
+                    ItemsSource="{Binding TreeSources}"
                     ScrollViewer.CanContentScroll="True"
                     ScrollViewer.HorizontalScrollBarVisibility="Visible"
                     ScrollViewer.VerticalScrollBarVisibility="Visible">

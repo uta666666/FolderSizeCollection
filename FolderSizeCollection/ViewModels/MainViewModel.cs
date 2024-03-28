@@ -11,6 +11,9 @@ using System.Windows;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Diagnostics;
+using System.Windows.Data;
+using System.Windows.Threading;
+using FolderSizeCollection.Views.UserControls;
 
 namespace FolderSizeCollection.ViewModels
 {
@@ -35,6 +38,9 @@ namespace FolderSizeCollection.ViewModels
             IsScanning = new ReactiveProperty<bool>();
             TreeFontSize = new ReactiveProperty<double>(13);
 
+            TreeSources = new ReactiveCollection<TreeSource>();
+            //BindingOperations.EnableCollectionSynchronization(TreeSources, new object());
+
             var factory = new TreeSourceFactory();
 
             ScanDriveCommand = new ReactiveCommand<DriveData>();
@@ -53,12 +59,21 @@ namespace FolderSizeCollection.ViewModels
                 var token = _cancelSource.Token;
 
                 //TreeSource.Value = new List<TreeSource>() { await TreeSourceFactory.MakeInstance(n) };
+                //factory.TreeSourceCreated += (sender, e) =>
+                //{
+                //    TreeSources.AddOnScheduler(e.TreeSource);
+                //};
+
                 await Task.Run(async () =>
                 {
                     IsScanning.Value = true;
                     try
                     {
-                        TreeSource.Value = new List<TreeSource>() { await factory.MakeInstanceAsync(n.Drive, token) };
+                        //TreeSource.Value = new List<TreeSource>() { await factory.MakeInstanceAsync(n.Drive, token) };
+                        TreeSources.ClearOnScheduler();
+                        TreeSources.AddOnScheduler(await factory.MakeInstanceAsync(n.Drive, token));
+                        //await factory.StartMakeTreeSourceAsync(n.Drive, token);
+
                     }
                     finally
                     {
@@ -85,7 +100,7 @@ namespace FolderSizeCollection.ViewModels
                 {
                     Process.Start("EXPLORER.EXE", n.Path);
                 }
-                else if(Directory.Exists(n.Parent.Path))
+                else if (Directory.Exists(n.Parent.Path))
                 {
                     Process.Start("EXPLORER.EXE", n.Parent.Path);
                 }
@@ -120,6 +135,18 @@ namespace FolderSizeCollection.ViewModels
             }
         }
 
+        private void DoEvents()
+        {
+            DispatcherFrame frame = new DispatcherFrame();
+            var callback = new DispatcherOperationCallback(obj =>
+            {
+                ((DispatcherFrame)obj).Continue = false;
+                return null;
+            });
+            Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, callback, frame);
+            Dispatcher.PushFrame(frame);
+        }
+
         private Log _log;
         private long _fileCount;
         private CancellationTokenSource _cancelSource;
@@ -131,6 +158,8 @@ namespace FolderSizeCollection.ViewModels
         public ReactiveProperty<DriveData> SelectedDrive { get; set; }
 
         public ReactiveProperty<List<TreeSource>> TreeSource { get; set; }
+
+        public ReactiveCollection<TreeSource> TreeSources { get; set; }
 
         public ReactiveProperty<TreeSource> SelectedTreeSource { get; set; }
 

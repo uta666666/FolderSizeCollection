@@ -10,7 +10,7 @@ namespace FolderSizeCollection.Views.UserControls
         public TreeListView()
         {   
             this.SetValue(VirtualizingStackPanel.IsVirtualizingProperty, true);
-            this.SetValue(VirtualizingStackPanel.VirtualizationModeProperty, VirtualizationMode.Recycling);
+            this.SetValue(VirtualizingStackPanel.VirtualizationModeProperty, VirtualizationMode.Standard);
 
             this.SelectedItemChanged += this.OnSelectedItemChanged;
         }
