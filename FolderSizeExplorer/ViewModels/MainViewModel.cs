@@ -305,6 +305,11 @@ namespace FolderSizeExplorer.ViewModels
         private void OpenExplorer(FileData fileData)
         {
             string path = string.Empty;
+            if (fileData == null)
+            {
+                return;
+            }
+
             if (fileData.IsDirectory)
             {
                 System.Diagnostics.Process.Start("EXPLORER.EXE", fileData.FullName);
@@ -332,6 +337,11 @@ namespace FolderSizeExplorer.ViewModels
         /// <param name="fileData"></param>
         private async void DeleteFile(FileData fileData)
         {
+            if (fileData == null)
+            {
+                return;
+            }
+
             var result = await ShowConfirmMessage("確認", $"{fileData.Name}を削除しますか？");
             if (result == MessageDialogResult.Affirmative)
             {
