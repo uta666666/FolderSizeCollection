@@ -1,4 +1,6 @@
-﻿using MahApps.Metro.Controls;
+﻿using FolderSizeExplorer.ViewModels;
+using MahApps.Metro.Controls;
+using MahApps.Metro.Controls.Dialogs;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,6 +22,8 @@ namespace FolderSizeExplorer
         public MainWindow()
         {
             InitializeComponent();
+
+            DataContext = new MainViewModel(DialogCoordinator.Instance);
         }
     }
 }

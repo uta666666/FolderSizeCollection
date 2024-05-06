@@ -22,5 +22,13 @@ namespace FolderSizeExplorer.Models
         public abstract ObservableCollection<FileData> SubDirectories { get; }
 
         public abstract ObservableCollection<FileData> Files { get; }
+
+        public abstract long MaxLengthDirectory { get; set; }
+
+        public abstract long MaxLengthFile { get; set; }
+
+        public abstract Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength);
+
+        public abstract Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength);
     }
 }

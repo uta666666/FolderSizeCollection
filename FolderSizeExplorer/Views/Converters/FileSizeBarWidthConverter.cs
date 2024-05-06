@@ -19,12 +19,17 @@ namespace FolderSizeExplorer.Views.Converters
                 long maxValue = (long)values[1];
                 long value = (long)values[2];
 
+                if (maxValue == 0)
+                {
+                    return 0d;
+                }
+
                 var x = colSize * value / maxValue;
                 return x * 0.9;
             }
             catch
             {
-                return 0;
+                return 0d;
             }
         }
 

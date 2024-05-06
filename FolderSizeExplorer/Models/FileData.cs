@@ -26,51 +26,66 @@ namespace FolderSizeExplorer.Models
         public DateTime LastWriteTimeUtc { get; }
         public DateTime LastWriteTime => LastWriteTimeUtc.ToLocalTime();
 
+        private readonly object _lockLength = new object();
         private long _length = 0;
         public long Length
         {
             get { return _length; }
-            set
+            private set
             {
-                if (_length == value)
+                lock (_lockLength)
                 {
-                    return;
+                    if (_length == value)
+                    {
+                        return;
+                    }
+                    _length = value;
                 }
-                _length = value;
                 RaisePropertyChanged();
+                RaisePropertyChanged(nameof(LengthKB));
             }
         }
+
+        public long LengthKB => Length / 1024;
 
         public override ObservableCollection<FileData> SubDirectories { get; }
 
         public override ObservableCollection<FileData> Files { get; }
 
+        private readonly object _lockSubDirectoriesCount = new object();
         private int _subDirectoriesCount;
         public int SubDirectoriesCount
         {
             get { return _subDirectoriesCount; }
-            set
+            private set
             {
-                if (_subDirectoriesCount == value)
+                lock (_lockSubDirectoriesCount)
                 {
-                    return;
+                    if (_subDirectoriesCount == value)
+                    {
+                        return;
+                    }
+                    _subDirectoriesCount = value;
                 }
-                _subDirectoriesCount = value;
                 RaisePropertyChanged();
             }
         }
 
+        private readonly object _lockFileCount = new object();
         private int _filesCount;
         public int FilesCount
         {
             get { return _filesCount; }
-            set
+            private set
             {
-                if (_filesCount == value)
+                lock (_lockFileCount)
                 {
-                    return;
+                    if (_filesCount == value)
+                    {
+                        return;
+                    }
+                    _filesCount = value;
                 }
-                _filesCount = value;
                 RaisePropertyChanged();
             }
         }
@@ -87,6 +102,44 @@ namespace FolderSizeExplorer.Models
                 return _image.Value;
             }
         }
+
+        private long _maxLengthFile = 0;
+        public override long MaxLengthFile
+        {
+            get
+            {
+                return _maxLengthFile;
+            }
+            set
+            {
+                if (_maxLengthFile == value)
+                {
+                    return;
+                }
+                _maxLengthFile = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private long _maxLengthDirectory = 0;
+        public override long MaxLengthDirectory
+        {
+            get
+            {
+                return _maxLengthDirectory;
+            }
+            set
+            {
+                if (_maxLengthDirectory == value)
+                {
+                    return;
+                }
+                _maxLengthDirectory = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
 
         /// <summary>
         /// コンストラクタ
@@ -119,5 +172,129 @@ namespace FolderSizeExplorer.Models
         }
 
         public override string ToString() => Name;
+
+
+
+
+
+
+        public override async Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength)
+        {
+            await Task.Run(async () =>
+            {
+                if (cancelToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                try
+                {
+                    long sizeDir = 0;
+                    SubDirectories.Clear();
+                    SubDirectoriesCount = 0;
+                    foreach (var subDir in DirectoryUtil.EnumerateDirectoriesData(FullName))
+                    {
+                        SubDirectories.Add(subDir);
+                        SubDirectoriesCount++;
+                        progress.Report(subDir);
+
+                        if (cancelToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
+                        subDir.PropertyChanged += (s, e) =>
+                        {
+                            if (e.PropertyName == nameof(subDir.Length))
+                            {
+                                if (subDir.Length > MaxLengthDirectory)
+                                {
+                                    MaxLengthDirectory = subDir.Length;
+                                    progressMaxLength.Report(MaxLengthDirectory);
+                                }
+                            }
+                        };
+
+                        var progressSubDir = new Progress<FileData>(value => RaisePropertyChanged(nameof(SubDirectories)));
+                        var progressMaxLengthSubDir = new Progress<long>(_ => { });
+                        await subDir.GetFilesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir);
+                        await subDir.GetDirectoriesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir);
+
+                        SubDirectoriesCount += subDir.SubDirectoriesCount;
+                        FilesCount += subDir.FilesCount;
+                        sizeDir += subDir.Length;
+                    }
+                    Length += sizeDir;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    return;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    return;
+                }
+                catch (FileNotFoundException ex)
+                {
+                    return;
+                }
+                catch
+                {
+                    return;
+                }
+            });
+        }
+
+        public override async Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength)
+        {
+            await Task.Run(() =>
+            {
+                if (cancelToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                long sizeFile = 0;
+                Files.Clear();
+                FilesCount = 0;
+
+                try
+                {
+                    foreach (var file in DirectoryUtil.EnumerateFilesData(FullName))
+                    {
+                        Files.Add(file);
+                        sizeFile += file.Length;
+
+                        if (file.Length > MaxLengthFile)
+                        {
+                            MaxLengthFile = file.Length;
+                            progressMaxLength.Report(MaxLengthFile);
+                        }
+
+                        if (cancelToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                    }
+                    Length += sizeFile;
+                    FilesCount = Files.Count;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    return;
+                }
+                catch (DirectoryNotFoundException ex)
+                {
+                    return;
+                }
+                catch (FileNotFoundException ex)
+                {
+                    return;
+                }
+                catch
+                {
+                    return;
+                }
+            });
+        }
     }
 }
