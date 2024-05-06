@@ -23,6 +23,10 @@ namespace FolderSizeExplorer.ViewModels
     {
         private IDialogCoordinator _dialogCordinator;
 
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
+        /// <param name="instance"></param>
         public MainViewModel(IDialogCoordinator instance)
         {
             _dialogCordinator = instance;
