@@ -22,10 +22,10 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v1
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 5.0.x
+        dotnet-version: 8.0.x
         
     - name: setup nuget
       uses: nuget/setup-nuget@v1
@@ -34,11 +34,12 @@ jobs:
         nuget-version: 'latest'
      
     - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v1.3.1
       
     - name: build core 
       run: |
-        dotnet publish FolderSizeCollection/FolderSizeCollection.csproj -c Release -r win-x64 -p:PublishReadyToRun=true -p:PublishSingleFile=true --self-contained true -o ./App-win-x64
+        dotnet publish FolderSizeCollection/FolderSizeCollection.csproj -c Release -r win-x64 -p:PublishReadyToRun=true -p:PublishSingleFile=true --self-contained true -o ./App-win-x64/Tree
+        dotnet publish FolderSizeCollection/FolderSizeExplorer.csproj -c Release -r win-x64 -p:PublishReadyToRun=true -p:PublishSingleFile=true --self-contained true -o ./App-win-x64/Explorer
         7z a -tzip ./App-win-x64.zip ./App-win-x64/*
       
     - name: Create Release
