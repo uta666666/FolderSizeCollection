@@ -51,6 +51,17 @@
         </LinearGradientBrush>
     </Window.Resources>
 
+    <Controls:MetroWindow.LeftWindowCommands>
+        <Controls:WindowCommands>
+            <ToggleButton
+                x:Name="buttonSwitchTheme"
+                Margin="10,0,0,0"
+                Command="{Binding SwitchThemeCommand}"
+                CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Mode=Self}}"
+                Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+        </Controls:WindowCommands>
+    </Controls:MetroWindow.LeftWindowCommands>
+
     <!--  DatContextはコードビハインド側で設定する  -->
     <!--<Window.DataContext>
         <vm:MainViewModel />
@@ -122,6 +133,7 @@
                                 <TextBlock
                                     Margin="10,0,0,0"
                                     VerticalAlignment="Center"
+                                    FontSize="16"
                                     Text="{Binding FullName}" />
                             </StackPanel>
                         </DataTemplate>
@@ -166,7 +178,7 @@
                         <TextBlock
                             Margin="0,0,0,0"
                             VerticalAlignment="Center"
-                            FontSize="18"
+                            FontSize="16"
                             Style="{StaticResource ScanTextStyle}" />
                     </StackPanel>
 
@@ -343,6 +355,13 @@
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Foreground" Value="{DynamicResource SecondaryHueMidBrush}" />
                                                             <Style.Triggers>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListViewItem}}, Path=IsSelected}" Value="False" />
+                                                                        <Condition Binding="{Binding IsChecked, ElementName=buttonSwitchTheme}" Value="True" />
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Foreground" Value="{StaticResource PrimaryHueMidBrush}" />
+                                                                </MultiDataTrigger>
                                                                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListViewItem}}, Path=IsSelected}" Value="True">
                                                                     <Setter Property="Foreground" Value="White" />
                                                                 </DataTrigger>
@@ -503,6 +522,13 @@
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Foreground" Value="{DynamicResource SecondaryHueMidBrush}" />
                                                             <Style.Triggers>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListViewItem}}, Path=IsSelected}" Value="False" />
+                                                                        <Condition Binding="{Binding IsChecked, ElementName=buttonSwitchTheme}" Value="True" />
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Foreground" Value="{StaticResource PrimaryHueMidBrush}" />
+                                                                </MultiDataTrigger>
                                                                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListViewItem}}, Path=IsSelected}" Value="True">
                                                                     <Setter Property="Foreground" Value="White" />
                                                                 </DataTrigger>

@@ -1,27 +1,33 @@
 ﻿using FolderSizeExplorer.Models;
-using FolderSizeExplorer.Utils;
 using Livet;
 using Reactive.Bindings;
-using Reactive.Bindings.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Data;
 using System.IO;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Reactive.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Data;
 using System.Linq.Dynamic.Core;
 using MahApps.Metro.Controls.Dialogs;
+using MaterialDesignThemes.Wpf;
+using System.Collections.Specialized;
+using System.Text;
 
 namespace FolderSizeExplorer.ViewModels
 {
+    /// <summary>
+    /// MainViewModel
+    /// </summary>
     public class MainViewModel : ViewModel
     {
         private IDialogCoordinator _dialogCordinator;
+
+        private const string NamePropertyName = "Name";
+        private const string LengthPropertyName = "Length";
+
+        private string _sortDirectoryPropertyName = "";
+        private bool _isSortDirectoryAsc = true;
+        private string _sortFilePropertyName = "";
+        private bool _isSortFileAsc = true;
+        private CancellationTokenSource _cancelSource;
+
 
         /// <summary>
         /// コンストラクタ
@@ -37,7 +43,7 @@ namespace FolderSizeExplorer.ViewModels
             {
                 Drives.Add(drive);
             }
-            SelectedDrive = new ReactiveProperty<DriveData>(Drives.FirstOrDefault());
+            SelectedDrive = new ReactiveProperty<DriveData>(Drives.First());
             Directories = new ReactiveCollection<FileData>();
             Files = new ReactiveCollection<FileData>();
             IsScanning = new ReactiveProperty<bool>();
@@ -52,6 +58,27 @@ namespace FolderSizeExplorer.ViewModels
             FileNameSortMark = new ReactiveProperty<string>();
             FileLengthSortMark = new ReactiveProperty<string>();
             StatusMessage = new ReactiveProperty<string>();
+
+            Files.CollectionChanged += (sender, e) =>
+            {
+                if (e.Action == NotifyCollectionChangedAction.Add)
+                {
+                    if (SelectedFilePath.Value == null || Files.Count == 1)
+                    {
+                        SelectedFilePath.Value = Files.First();
+                    }
+                }
+            };
+            Directories.CollectionChanged += (sender, e) =>
+            {
+                if (e.Action == NotifyCollectionChangedAction.Add)
+                {
+                    if (SelectedDirectoryPath.Value == null || Directories.Count == 1)
+                    {
+                        SelectedDirectoryPath.Value = Directories.First();
+                    }
+                }
+            };
 
 
             ScanDriveCommand = new ReactiveCommand();
@@ -77,18 +104,10 @@ namespace FolderSizeExplorer.ViewModels
 
             DeleteCommnad = new ReactiveCommand<FileData>();
             DeleteCommnad.Subscribe(DeleteFile);
+
+            SwitchThemeCommand = new ReactiveCommand<bool>();
+            SwitchThemeCommand.Subscribe(SwitchTheme);
         }
-
-
-        private const string NamePropertyName = "Name";
-        private const string LengthPropertyName = "Length";
-
-        private string _sortDirectoryPropertyName = "";
-        private bool _isSortDirectoryAsc = true;
-        private string _sortFilePropertyName = "";
-        private bool _isSortFileAsc = true;
-        private CancellationTokenSource _cancelSource;
-
 
 
         /// <summary>
@@ -98,7 +117,7 @@ namespace FolderSizeExplorer.ViewModels
         private async Task ScanDriveAsync()
         {
             IsScanning.Value = true;
-            StatusMessage.Value = "解析中．．．";
+            SetStatus($"{SelectedDrive.Value} の解析中．．．");
             try
             {
                 _cancelSource = new CancellationTokenSource();
@@ -111,26 +130,21 @@ namespace FolderSizeExplorer.ViewModels
                 Files.ClearOnScheduler();
 
 
-                var progressGetFiles = new Progress<FileData>(file =>
-                {
-                    Files.AddOnScheduler(file);
-                });
+                var progressLogger = new Progress<string>(async message => await Logging(message));
+                var progressGetFiles = new Progress<FileData>(Files.AddOnScheduler);
                 var progressChangeMaxLengthFile = new Progress<long>(maxLength =>
                 {
                     MaxLengthFile.Value = maxLength;
                 });
-                var taskFile = SelectedDrive.Value.GetFilesAsync(token, progressGetFiles, progressChangeMaxLengthFile);
+                var taskFile = SelectedDrive.Value.GetFilesAsync(token, progressGetFiles, progressChangeMaxLengthFile, progressLogger);
 
 
-                var progressGetDirectories = new Progress<FileData>(dir =>
-                {
-                    Directories.AddOnScheduler(dir);
-                });
+                var progressGetDirectories = new Progress<FileData>(Directories.AddOnScheduler);
                 var progressChangeMaxLengthDirectory = new Progress<long>(maxLength =>
                 {
                     MaxLengthDirectory.Value = maxLength;
                 });
-                var taskDirectory = SelectedDrive.Value.GetDirectoriesAsync(token, progressGetDirectories, progressChangeMaxLengthDirectory);
+                var taskDirectory = SelectedDrive.Value.GetDirectoriesAsync(token, progressGetDirectories, progressChangeMaxLengthDirectory, progressLogger);
 
 
                 await Task.WhenAll(taskFile, taskDirectory);
@@ -138,7 +152,7 @@ namespace FolderSizeExplorer.ViewModels
             finally
             {
                 IsScanning.Value = false;
-                StatusMessage.Value = "解析終了";
+                SetStatus("解析終了");
             }
         }
 
@@ -231,6 +245,7 @@ namespace FolderSizeExplorer.ViewModels
             SetCollection(Directories, Directories, _sortDirectoryPropertyName, _isSortDirectoryAsc);
             DirectoryNameSortMark.Value = _sortDirectoryPropertyName == NamePropertyName ? (_isSortDirectoryAsc ? "▲" : "▼") : "";
             DirectoryLengthSortMark.Value = _sortDirectoryPropertyName == LengthPropertyName ? (_isSortDirectoryAsc ? "▲" : "▼") : "";
+            SelectedDirectoryPath.Value = Directories.First();
         }
 
 
@@ -257,6 +272,7 @@ namespace FolderSizeExplorer.ViewModels
             SetCollection(Files, Files, _sortFilePropertyName, _isSortFileAsc);
             FileNameSortMark.Value = (_sortFilePropertyName == NamePropertyName ? (_isSortFileAsc ? "▲" : "▼") : "");
             FileLengthSortMark.Value = (_sortFilePropertyName == LengthPropertyName ? (_isSortFileAsc ? "▲" : "▼") : "");
+            SelectedFilePath.Value = Files.First();
         }
 
 
@@ -342,6 +358,21 @@ namespace FolderSizeExplorer.ViewModels
 
 
         /// <summary>
+        /// テーマを切り替える
+        /// </summary>
+        /// <param name="isDark"></param>
+        private void SwitchTheme(bool isDark)
+        {
+            var helper = new PaletteHelper();
+            ITheme theme = helper.GetTheme();
+            theme.SetBaseTheme(isDark ? Theme.Dark : Theme.Light);
+            helper.SetTheme(theme);
+
+            ControlzEx.Theming.ThemeManager.Current.ChangeThemeBaseColor(System.Windows.Application.Current, isDark ? "Dark" : "Light");
+        }
+
+
+        /// <summary>
         /// メッセージを表示
         /// </summary>
         /// <param name="title"></param>
@@ -350,6 +381,32 @@ namespace FolderSizeExplorer.ViewModels
         private async Task<MessageDialogResult> ShowConfirmMessage(string title, string message)
         {
             return await _dialogCordinator.ShowMessageAsync(this, title, message, MessageDialogStyle.AffirmativeAndNegative);
+        }
+
+
+        /// <summary>
+        /// ステータスを表示
+        /// </summary>
+        /// <param name="message"></param>
+        private void SetStatus(string message)
+        {
+            StatusMessage.Value = message;
+        }
+
+
+        /// <summary>
+        /// ログを出力s
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        private async Task Logging(string message)
+        {
+            try
+            {
+                SetStatus(message);
+                await File.AppendAllTextAsync("log.txt", $"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")} {message}", Encoding.UTF8);
+            }
+            catch { }
         }
 
 
@@ -405,6 +462,8 @@ namespace FolderSizeExplorer.ViewModels
         public ReactiveCommand<string> SortDirectoryCommand { get; private set; }
 
         public ReactiveCommand<string> SortFileCommand { get; private set; }
+
+        public ReactiveCommand<bool> SwitchThemeCommand { get; private set; }
         #endregion コマンド
     }
 }

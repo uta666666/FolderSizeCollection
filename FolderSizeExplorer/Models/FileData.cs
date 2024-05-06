@@ -178,7 +178,7 @@ namespace FolderSizeExplorer.Models
 
 
 
-        public override async Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength)
+        public override async Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger)
         {
             await Task.Run(async () =>
             {
@@ -186,11 +186,14 @@ namespace FolderSizeExplorer.Models
                 {
                     return;
                 }
+
+                long sizeDir = 0;
+                SubDirectories.Clear();
+                SubDirectoriesCount = 0;
+                MaxLengthDirectory = 0;
+
                 try
                 {
-                    long sizeDir = 0;
-                    SubDirectories.Clear();
-                    SubDirectoriesCount = 0;
                     foreach (var subDir in DirectoryUtil.EnumerateDirectoriesData(FullName))
                     {
                         SubDirectories.Add(subDir);
@@ -216,8 +219,8 @@ namespace FolderSizeExplorer.Models
 
                         var progressSubDir = new Progress<FileData>(value => RaisePropertyChanged(nameof(SubDirectories)));
                         var progressMaxLengthSubDir = new Progress<long>(_ => { });
-                        await subDir.GetFilesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir);
-                        await subDir.GetDirectoriesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir);
+                        await subDir.GetFilesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir, logger);
+                        await subDir.GetDirectoriesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir, logger);
 
                         SubDirectoriesCount += subDir.SubDirectoriesCount;
                         FilesCount += subDir.FilesCount;
@@ -227,24 +230,28 @@ namespace FolderSizeExplorer.Models
                 }
                 catch (UnauthorizedAccessException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (DirectoryNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (FileNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
             });
         }
 
-        public override async Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength)
+        public override async Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger)
         {
             await Task.Run(() =>
             {
@@ -256,6 +263,7 @@ namespace FolderSizeExplorer.Models
                 long sizeFile = 0;
                 Files.Clear();
                 FilesCount = 0;
+                MaxLengthFile = 0;
 
                 try
                 {
@@ -280,18 +288,22 @@ namespace FolderSizeExplorer.Models
                 }
                 catch (UnauthorizedAccessException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (DirectoryNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (FileNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
             });

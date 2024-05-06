@@ -96,7 +96,7 @@ namespace FolderSizeExplorer.Models
         public override string ToString() => FullName.TrimEnd('\\');
 
 
-        public override async Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength)
+        public override async Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger)
         {
             await Task.Run(async () =>
             {
@@ -104,18 +104,30 @@ namespace FolderSizeExplorer.Models
                 {
                     return;
                 }
+
+                SubDirectories.Clear();
+                MaxLengthDirectory = 0;
+
                 try
                 {
+                    //表示のために先に追加しておく
                     foreach (var dir in DirectoryUtil.EnumerateDirectoriesData(FullName))
                     {
-                        SubDirectories.Add(dir);
-                        progress.Report(dir);
-
                         if (cancelToken.IsCancellationRequested)
                         {
                             return;
                         }
+                        SubDirectories.Add(dir);
+                        progress.Report(dir);
+                    }
 
+                    //取得したディレクトリの中身を検索
+                    foreach (var dir in SubDirectories)
+                    {
+                        if (cancelToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
                         dir.PropertyChanged += (s, e) =>
                         {
                             if (e.PropertyName == nameof(dir.Length))
@@ -129,31 +141,35 @@ namespace FolderSizeExplorer.Models
                         };
                         var progressSubDir = new Progress<FileData>(value => RaisePropertyChanged(nameof(SubDirectories)));
                         var progressMaxLengthSubDir = new Progress<long>(_ => { });
-                        await dir.GetFilesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir);
-                        await dir.GetDirectoriesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir);
+                        await dir.GetFilesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir, logger);
+                        await dir.GetDirectoriesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir, logger);
                     }
                 }
                 catch (UnauthorizedAccessException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (DirectoryNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (FileNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
             });
         }
 
 
-        public override async Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength)
+        public override async Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger)
         {
             await Task.Run(() =>
             {
@@ -161,6 +177,10 @@ namespace FolderSizeExplorer.Models
                 {
                     return;
                 }
+                
+                Files.Clear();
+                MaxLengthFile = 0;
+
                 try
                 {
                     foreach (var file in DirectoryUtil.EnumerateFilesData(FullName))
@@ -182,18 +202,22 @@ namespace FolderSizeExplorer.Models
                 }
                 catch (UnauthorizedAccessException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (DirectoryNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
                 catch (FileNotFoundException ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    logger.Report(ex.Message);
                     return;
                 }
             });
