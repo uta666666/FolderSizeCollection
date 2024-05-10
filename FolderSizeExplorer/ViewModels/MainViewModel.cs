@@ -19,13 +19,6 @@ namespace FolderSizeExplorer.ViewModels
     {
         private IDialogCoordinator _dialogCordinator;
 
-        private const string NamePropertyName = "Name";
-        private const string LengthPropertyName = "Length";
-
-        private string _sortDirectoryPropertyName = "";
-        private bool _isSortDirectoryAsc = true;
-        private string _sortFilePropertyName = "";
-        private bool _isSortFileAsc = true;
         private CancellationTokenSource _cancelSource;
 
 
@@ -53,11 +46,13 @@ namespace FolderSizeExplorer.ViewModels
             BreadCrumbDictionaries = new ReactiveCollection<AbstractFileData>();
             SelectedDirectoryPath = new ReactiveProperty<FileData>();
             SelectedFilePath = new ReactiveProperty<FileData>();
-            DirectoryNameSortMark = new ReactiveProperty<string>();
-            DirectoryLengthSortMark = new ReactiveProperty<string>();
-            FileNameSortMark = new ReactiveProperty<string>();
-            FileLengthSortMark = new ReactiveProperty<string>();
             StatusMessage = new ReactiveProperty<string>();
+            IsBusy = new ReactiveProperty<bool>();
+            SortFilePropertyName = new ReactiveProperty<string>();
+            IsSortFileAsc = new ReactiveProperty<bool>();
+            SortDirectoryPropertyName = new ReactiveProperty<string>();
+            IsSortDirectoryAsc = new ReactiveProperty<bool>();
+
 
             Files.CollectionChanged += (sender, e) =>
             {
@@ -88,10 +83,10 @@ namespace FolderSizeExplorer.ViewModels
             StopScanDriveCommand.Subscribe(StopScanDrive);
 
             FolderSelectCommand = new ReactiveCommand();
-            FolderSelectCommand.Subscribe(SelectDirectory);
+            FolderSelectCommand.Subscribe(SelectDirectoryAsync);
 
             MoveFolderCommand = new ReactiveCommand<string>();
-            MoveFolderCommand.Subscribe(MoveDirectory);
+            MoveFolderCommand.Subscribe(MoveDirectoryAsync);
 
             SortDirectoryCommand = new ReactiveCommand<string>();
             SortDirectoryCommand.Subscribe(SortDirectories);
@@ -117,7 +112,7 @@ namespace FolderSizeExplorer.ViewModels
         private async Task ScanDriveAsync()
         {
             IsScanning.Value = true;
-            SetStatus($"{SelectedDrive.Value} の解析中．．．");
+            StartTimer();
             try
             {
                 _cancelSource = new CancellationTokenSource();
@@ -152,8 +147,32 @@ namespace FolderSizeExplorer.ViewModels
             finally
             {
                 IsScanning.Value = false;
-                SetStatus("解析終了");
             }
+        }
+
+
+        /// <summary>
+        /// 解析のタイマーを開始
+        /// </summary>
+        private void StartTimer()
+        {
+            var start = DateTime.Now;
+
+            var timer = new System.Timers.Timer(1000);
+            timer.Elapsed += (sender, e) =>
+            {
+                var elapsed = (int)(DateTime.Now - start).TotalSeconds;
+                if (IsScanning.Value)
+                {
+                    SetStatus($"[{SelectedDrive.Value}] Analyzing... ({elapsed} s)");
+                }
+                else
+                {
+                    timer.Stop();
+                    SetStatus($"[{SelectedDrive.Value}] Analysis Completed ({elapsed} s)");
+                }
+            };
+            timer.Start();
         }
 
 
@@ -172,7 +191,7 @@ namespace FolderSizeExplorer.ViewModels
         /// <summary>
         /// フォルダ選択
         /// </summary>
-        private void SelectDirectory()
+        private async void SelectDirectoryAsync()
         {
             if (SelectedDirectoryPath.Value == null)
             {
@@ -190,8 +209,8 @@ namespace FolderSizeExplorer.ViewModels
             MaxLengthDirectory.Value = dir.MaxLengthDirectory;
             MaxLengthFile.Value = dir.MaxLengthFile;
 
-            SetCollection(Directories, dir.SubDirectories, _sortDirectoryPropertyName, _isSortDirectoryAsc);
-            SetCollection(Files, dir.Files, _sortFilePropertyName, _isSortFileAsc);
+            await SetCollectionAsync(Directories, dir.SubDirectories, SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
+            await SetCollectionAsync(Files, dir.Files, SortFilePropertyName.Value, IsSortFileAsc.Value);
         }
 
 
@@ -199,7 +218,7 @@ namespace FolderSizeExplorer.ViewModels
         /// フォルダ選択
         /// </summary>
         /// <param name="path"></param>
-        private void MoveDirectory(string path)
+        private async void MoveDirectoryAsync(string path)
         {
             (AbstractFileData dir, int index) = BreadCrumbDictionaries.Select((data, index) => (data, index)).FirstOrDefault(d => d.data.FullName == path);
             if (dir == null)
@@ -216,8 +235,8 @@ namespace FolderSizeExplorer.ViewModels
             MaxLengthDirectory.Value = dir.MaxLengthDirectory;
             MaxLengthFile.Value = dir.MaxLengthFile;
 
-            SetCollection(Directories, dir.SubDirectories, _sortDirectoryPropertyName, _isSortDirectoryAsc);
-            SetCollection(Files, dir.Files, _sortFilePropertyName, _isSortFileAsc);
+            await SetCollectionAsync(Directories, dir.SubDirectories, SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
+            await SetCollectionAsync(Files, dir.Files, SortFilePropertyName.Value, IsSortFileAsc.Value);
         }
 
 
@@ -225,54 +244,66 @@ namespace FolderSizeExplorer.ViewModels
         /// ディレクトリ一覧をソートする
         /// </summary>
         /// <param name="sortPropertyName"></param>
-        private void SortDirectories(string sortPropertyName)
+        private async void SortDirectories(string sortPropertyName)
         {
-            if (Directories.Count == 0)
+            IsBusy.Value = true;
+            try
             {
-                return;
-            }
+                if (Directories.Count == 0)
+                {
+                    return;
+                }
 
-            if (_sortDirectoryPropertyName == sortPropertyName)
-            {
-                _isSortDirectoryAsc = !_isSortDirectoryAsc;
-            }
-            else
-            {
-                _isSortDirectoryAsc = true;
-                _sortDirectoryPropertyName = sortPropertyName;
-            }
+                if (SortDirectoryPropertyName.Value == sortPropertyName)
+                {
+                    IsSortDirectoryAsc.Value = !IsSortDirectoryAsc.Value;
+                }
+                else
+                {
+                    IsSortDirectoryAsc.Value = true;
+                    SortDirectoryPropertyName.Value = sortPropertyName;
+                }
 
-            SetCollection(Directories, Directories, _sortDirectoryPropertyName, _isSortDirectoryAsc);
-            DirectoryNameSortMark.Value = _sortDirectoryPropertyName == NamePropertyName ? (_isSortDirectoryAsc ? "▲" : "▼") : "";
-            DirectoryLengthSortMark.Value = _sortDirectoryPropertyName == LengthPropertyName ? (_isSortDirectoryAsc ? "▲" : "▼") : "";
-            SelectedDirectoryPath.Value = Directories.First();
+                await SetCollectionAsync(Directories, Directories.ToList(), SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
+                SelectedDirectoryPath.Value = Directories.First();
+            }
+            finally
+            {
+                IsBusy.Value = false;
+            }
         }
 
 
         /// <summary>
         /// ファイル一覧をソートする
         /// </summary>
-        private void SortFiles(string sortPropertyName)
+        private async void SortFiles(string sortPropertyName)
         {
-            if (Files.Count == 0)
+            IsBusy.Value = true;
+            try
             {
-                return;
-            }
+                if (Files.Count == 0)
+                {
+                    return;
+                }
 
-            if (_sortFilePropertyName == sortPropertyName)
-            {
-                _isSortFileAsc = !_isSortFileAsc;
-            }
-            else
-            {
-                _isSortFileAsc = true;
-                _sortFilePropertyName = sortPropertyName;
-            }
+                if (SortFilePropertyName.Value == sortPropertyName)
+                {
+                    IsSortFileAsc.Value = !IsSortFileAsc.Value;
+                }
+                else
+                {
+                    IsSortFileAsc.Value = true;
+                    SortFilePropertyName.Value = sortPropertyName;
+                }
 
-            SetCollection(Files, Files, _sortFilePropertyName, _isSortFileAsc);
-            FileNameSortMark.Value = (_sortFilePropertyName == NamePropertyName ? (_isSortFileAsc ? "▲" : "▼") : "");
-            FileLengthSortMark.Value = (_sortFilePropertyName == LengthPropertyName ? (_isSortFileAsc ? "▲" : "▼") : "");
-            SelectedFilePath.Value = Files.First();
+                await SetCollectionAsync(Files, Files.ToList(), SortFilePropertyName.Value, IsSortFileAsc.Value);
+                SelectedFilePath.Value = Files.First();
+            }
+            finally
+            {
+                IsBusy.Value = false;
+            }
         }
 
 
@@ -284,17 +315,20 @@ namespace FolderSizeExplorer.ViewModels
         /// <param name="items"></param>
         /// <param name="sortPropertyName"></param>
         /// <param name="isAscending"></param>
-        private void SetCollection<T>(ReactiveCollection<T> collection, IEnumerable<T> items, string sortPropertyName, bool isAscending)
+        private async Task SetCollectionAsync<T>(ReactiveCollection<T> collection, IEnumerable<T> items, string sortPropertyName, bool isAscending)
         {
-            collection.ClearOnScheduler();
-            if (string.IsNullOrEmpty(sortPropertyName))
+            await Task.Run(() =>
             {
-                collection.AddRangeOnScheduler(items);
-            }
-            else
-            {
-                collection.AddRangeOnScheduler(items.AsQueryable().OrderBy($"{sortPropertyName} {(isAscending ? "ascending" : "descending")}"));
-            }
+                collection.ClearOnScheduler();
+                if (string.IsNullOrEmpty(sortPropertyName))
+                {
+                    collection.AddRangeOnScheduler(items);
+                }
+                else
+                {
+                    collection.AddRangeOnScheduler(items.AsQueryable().OrderBy($"{sortPropertyName} {(isAscending ? "ascending" : "descending")}"));
+                }
+            });
         }
 
 
@@ -405,7 +439,7 @@ namespace FolderSizeExplorer.ViewModels
 
 
         /// <summary>
-        /// ログを出力s
+        /// ログを出力
         /// </summary>
         /// <param name="message"></param>
         /// <returns></returns>
@@ -444,15 +478,17 @@ namespace FolderSizeExplorer.ViewModels
 
         public ReactiveProperty<long> MaxLengthDirectory { get; set; }
 
-        public ReactiveProperty<string> DirectoryNameSortMark { get; set; }
-
-        public ReactiveProperty<string> DirectoryLengthSortMark { get; set; }
-
-        public ReactiveProperty<string> FileNameSortMark { get; set; }
-
-        public ReactiveProperty<string> FileLengthSortMark { get; set; }
-
         public ReactiveProperty<string> StatusMessage { get; set; }
+
+        public ReactiveProperty<bool> IsBusy { get; set; }
+
+        public ReactiveProperty<string> SortFilePropertyName { get; set; }
+
+        public ReactiveProperty<bool> IsSortFileAsc { get; set; }
+
+        public ReactiveProperty<string> SortDirectoryPropertyName { get; set; }
+
+        public ReactiveProperty<bool> IsSortDirectoryAsc { get; set; }
         #endregion プロパティ
 
 

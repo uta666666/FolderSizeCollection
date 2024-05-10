@@ -32,6 +32,7 @@
         <cv:ScanCommandConverter x:Key="ScanCommandConverter" />
         <cv:FileSizeBarWidthConverter x:Key="FileSizeBarWidthConverter" />
         <cv:FileSizeBarHeightConverter x:Key="FileSizeBarHeightConverter" />
+        <cv:SortMarkConverter x:Key="SortMarkConverter" />
         <!--  Behaviors  -->
         <bh:ScanButtonBehavior x:Key="ScanCommandBehavior" />
         <bh:DoubleClickBehavior x:Key="DoubleClickBehavior" />
@@ -50,6 +51,16 @@
             <GradientStop Offset="1.0" Color="#00C9FE" />
         </LinearGradientBrush>
     </Window.Resources>
+
+    <Window.Style>
+        <Style TargetType="{x:Type Controls:MetroWindow}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBusy.Value}" Value="True">
+                    <Setter Property="Cursor" Value="Wait" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
 
     <Controls:MetroWindow.LeftWindowCommands>
         <Controls:WindowCommands>
@@ -242,26 +253,33 @@
                     <bh:DoubleClickBehavior Command="{Binding FolderSelectCommand}" />
                 </xb:Interaction.Behaviors>
 
-                <ListView.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem
-                            Command="{Binding OpenExplorerCommand}"
-                            CommandParameter="{Binding SelectedDirectoryPath.Value}"
-                            Header="Open in explorer">
-                            <MenuItem.Icon>
-                                <materialDesign:PackIcon Kind="Folders" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem
-                            Command="{Binding DeleteCommnad}"
-                            CommandParameter="{Binding SelectedDirectoryPath.Value}"
-                            Header="Delete">
-                            <MenuItem.Icon>
-                                <materialDesign:PackIcon Kind="TrashCan" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </ContextMenu>
-                </ListView.ContextMenu>
+                <ListView.ItemContainerStyle>
+                    <Style BasedOn="{StaticResource MahApps.Styles.ListViewItem}" TargetType="ListViewItem">
+                        <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListView}}" />
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Mode=Self}}">
+                                    <MenuItem
+                                        Command="{Binding OpenExplorerCommand}"
+                                        CommandParameter="{Binding SelectedDirectoryPath.Value}"
+                                        Header="Open in explorer">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="Folders" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem
+                                        Command="{Binding DeleteCommnad}"
+                                        CommandParameter="{Binding SelectedDirectoryPath.Value}"
+                                        Header="Delete">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="TrashCan" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListView.ItemContainerStyle>
 
                 <ListView.View>
                     <GridView>
@@ -279,18 +297,28 @@
 
                             <GridViewColumn Width="200" DisplayMemberBinding="{Binding Name}">
                                 <GridViewColumn.Header>
-                                    <GridViewColumnHeader Command="{Binding SortDirectoryCommand}" CommandParameter="Name">
+                                    <GridViewColumnHeader
+                                        Command="{Binding SortDirectoryCommand}"
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="Name">
                                         <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
                                             <TextBlock
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center"
-                                                Text="Name" />
+                                                Text="{Binding Tag, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" />
                                             <TextBlock
                                                 Margin="0,0,20,0"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"
-                                                Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                Text="{Binding DirectoryNameSortMark.Value}" />
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortDirectoryPropertyName.Value" />
+                                                        <Binding Path="IsSortDirectoryAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                         </Grid>
                                     </GridViewColumnHeader>
                                 </GridViewColumn.Header>
@@ -301,7 +329,8 @@
                                     <GridViewColumnHeader
                                         Controls:ControlsHelper.ContentCharacterCasing="Normal"
                                         Command="{Binding SortDirectoryCommand}"
-                                        CommandParameter="Length">
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="Length">
                                         <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
                                             <TextBlock
                                                 HorizontalAlignment="Left"
@@ -311,8 +340,15 @@
                                                 Margin="0,0,20,0"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"
-                                                Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                Text="{Binding DirectoryLengthSortMark.Value}" />
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortDirectoryPropertyName.Value" />
+                                                        <Binding Path="IsSortDirectoryAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                         </Grid>
                                     </GridViewColumnHeader>
                                 </GridViewColumn.Header>
@@ -377,7 +413,31 @@
 
                             <GridViewColumn Width="100">
                                 <GridViewColumn.Header>
-                                    <GridViewColumnHeader Controls:ControlsHelper.ContentCharacterCasing="Normal" Content="Folders" />
+                                    <GridViewColumnHeader
+                                        Controls:ControlsHelper.ContentCharacterCasing="Normal"
+                                        Command="{Binding SortDirectoryCommand}"
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="SubDirectoriesCount">
+                                        <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
+                                            <TextBlock
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Text="Foders" />
+                                            <TextBlock
+                                                Margin="0,0,20,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortDirectoryPropertyName.Value" />
+                                                        <Binding Path="IsSortDirectoryAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                    </GridViewColumnHeader>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -388,7 +448,31 @@
 
                             <GridViewColumn Width="100">
                                 <GridViewColumn.Header>
-                                    <GridViewColumnHeader Controls:ControlsHelper.ContentCharacterCasing="Normal" Content="Files" />
+                                    <GridViewColumnHeader
+                                        Controls:ControlsHelper.ContentCharacterCasing="Normal"
+                                        Command="{Binding SortDirectoryCommand}"
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="FilesCount">
+                                        <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
+                                            <TextBlock
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Text="Files" />
+                                            <TextBlock
+                                                Margin="0,0,20,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortDirectoryPropertyName.Value" />
+                                                        <Binding Path="IsSortDirectoryAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                    </GridViewColumnHeader>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -409,26 +493,33 @@
                 ItemsSource="{Binding Files}"
                 SelectedItem="{Binding SelectedFilePath.Value, Mode=TwoWay}"
                 Tag="{Binding MaxLengthFile.Value, Mode=TwoWay}">
-                <ListView.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem
-                            Command="{Binding OpenExplorerCommand}"
-                            CommandParameter="{Binding SelectedFilePath.Value}"
-                            Header="Open in explorer">
-                            <MenuItem.Icon>
-                                <materialDesign:PackIcon Kind="Folders" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem
-                            Command="{Binding DeleteCommnad}"
-                            CommandParameter="{Binding SelectedFilePath.Value}"
-                            Header="Delete">
-                            <MenuItem.Icon>
-                                <materialDesign:PackIcon Kind="TrashCan" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </ContextMenu>
-                </ListView.ContextMenu>
+                <ListView.ItemContainerStyle>
+                    <Style BasedOn="{StaticResource MahApps.Styles.ListViewItem}" TargetType="ListViewItem">
+                        <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListView}}" />
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Mode=Self}}">
+                                    <MenuItem
+                                        Command="{Binding OpenExplorerCommand}"
+                                        CommandParameter="{Binding SelectedFilePath.Value}"
+                                        Header="Open in explorer">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="Folders" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem
+                                        Command="{Binding DeleteCommnad}"
+                                        CommandParameter="{Binding SelectedFilePath.Value}"
+                                        Header="Delete">
+                                        <MenuItem.Icon>
+                                            <materialDesign:PackIcon Kind="TrashCan" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListView.ItemContainerStyle>
 
                 <ListView.View>
                     <GridView>
@@ -446,18 +537,28 @@
 
                             <GridViewColumn Width="200" DisplayMemberBinding="{Binding Name}">
                                 <GridViewColumn.Header>
-                                    <GridViewColumnHeader Command="{Binding SortFileCommand}" CommandParameter="Name">
+                                    <GridViewColumnHeader
+                                        Command="{Binding SortFileCommand}"
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="Name">
                                         <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
                                             <TextBlock
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center"
-                                                Text="Name" />
+                                                Text="{Binding Tag, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" />
                                             <TextBlock
                                                 Margin="0,0,20,0"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"
-                                                Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                Text="{Binding FileNameSortMark.Value}" />
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortFilePropertyName.Value" />
+                                                        <Binding Path="IsSortFileAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                         </Grid>
                                     </GridViewColumnHeader>
                                 </GridViewColumn.Header>
@@ -468,7 +569,8 @@
                                     <GridViewColumnHeader
                                         Controls:ControlsHelper.ContentCharacterCasing="Normal"
                                         Command="{Binding SortFileCommand}"
-                                        CommandParameter="Length">
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="Length">
                                         <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
                                             <TextBlock
                                                 HorizontalAlignment="Left"
@@ -478,8 +580,15 @@
                                                 Margin="0,0,20,0"
                                                 HorizontalAlignment="Right"
                                                 VerticalAlignment="Center"
-                                                Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                Text="{Binding FileLengthSortMark.Value}" />
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortFilePropertyName.Value" />
+                                                        <Binding Path="IsSortFileAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                         </Grid>
                                     </GridViewColumnHeader>
                                 </GridViewColumn.Header>
@@ -544,7 +653,31 @@
 
                             <GridViewColumn Width="130">
                                 <GridViewColumn.Header>
-                                    <GridViewColumnHeader Controls:ControlsHelper.ContentCharacterCasing="Normal" Content="Creation" />
+                                    <GridViewColumnHeader
+                                        Controls:ControlsHelper.ContentCharacterCasing="Normal"
+                                        Command="{Binding SortFileCommand}"
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="CreationTime">
+                                        <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
+                                            <TextBlock
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding Tag, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" />
+                                            <TextBlock
+                                                Margin="0,0,20,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortFilePropertyName.Value" />
+                                                        <Binding Path="IsSortFileAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                    </GridViewColumnHeader>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -555,18 +688,65 @@
 
                             <GridViewColumn Width="130">
                                 <GridViewColumn.Header>
-                                    <GridViewColumnHeader Controls:ControlsHelper.ContentCharacterCasing="Normal" Content="LastAccess" />
+                                    <GridViewColumnHeader
+                                        Controls:ControlsHelper.ContentCharacterCasing="Normal"
+                                        Command="{Binding SortFileCommand}"
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="LastAccessTime">
+                                        <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
+                                            <TextBlock
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding Tag, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" />
+                                            <TextBlock
+                                                Margin="0,0,20,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortFilePropertyName.Value" />
+                                                        <Binding Path="IsSortFileAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                    </GridViewColumnHeader>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding LastAccesTime, StringFormat={}{0:yyyy/MM/dd HH:mm:ss}}" />
+                                        <TextBlock Text="{Binding LastAccessTime, StringFormat={}{0:yyyy/MM/dd HH:mm:ss}}" />
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
 
                             <GridViewColumn Width="130">
                                 <GridViewColumn.Header>
-                                    <GridViewColumnHeader Controls:ControlsHelper.ContentCharacterCasing="Normal" Content="LastWrite" />
+                                    <GridViewColumnHeader
+                                        Command="{Binding SortFileCommand}"
+                                        CommandParameter="{Binding Tag, RelativeSource={RelativeSource Mode=Self}}"
+                                        Tag="LastWriteTime">
+                                        <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" HorizontalAlignment="Stretch">
+                                            <TextBlock
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding Tag, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}}" />
+                                            <TextBlock
+                                                Margin="0,0,20,0"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SortMarkConverter}">
+                                                        <Binding Path="Tag" RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=GridViewColumnHeader}" />
+                                                        <Binding Path="SortFilePropertyName.Value" />
+                                                        <Binding Path="IsSortFileAsc.Value" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                    </GridViewColumnHeader>
                                 </GridViewColumn.Header>
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -583,10 +763,6 @@
         <Grid Grid.Row="5" Margin="0">
             <StatusBar Height="27">
                 <DockPanel Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=StatusBar}}">
-                    <TextBlock
-                        Margin="0,0,10,0"
-                        DockPanel.Dock="Right"
-                        Text="{Binding SelectedDirectoryPath.Value.Length, StringFormat={}{0:N0} Bytes}" />
                     <TextBlock Margin="10,0,10,0" Text="{Binding StatusMessage.Value}" />
                 </DockPanel>
             </StatusBar>

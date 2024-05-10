@@ -22,7 +22,7 @@ namespace FolderSizeExplorer.Models
         public DateTime CreationTimeUtc { get; }
         public DateTime CreationTime => CreationTimeUtc.ToLocalTime();
         public DateTime LastAccessTimeUtc { get; }
-        public DateTime LastAccesTime => LastAccessTimeUtc.ToLocalTime();
+        public DateTime LastAccessTime => LastAccessTimeUtc.ToLocalTime();
         public DateTime LastWriteTimeUtc { get; }
         public DateTime LastWriteTime => LastWriteTimeUtc.ToLocalTime();
 
