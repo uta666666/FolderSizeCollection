@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Input;
 
 namespace FolderSizeExplorer.Views.Converters
 {
@@ -32,8 +33,7 @@ namespace FolderSizeExplorer.Views.Converters
 
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            var isScanning = (bool)values.Last();
-            
+            var isScanning = (bool)values[2];            
             if (isScanning)
             {
                 return values[1];

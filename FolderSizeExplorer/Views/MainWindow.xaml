@@ -23,6 +23,7 @@
     BorderThickness="0"
     FontFamily="{materialDesign:MaterialDesignFont}"
     GlowBrush="{DynamicResource AccentColorBrush}"
+    ResizeMode="CanResizeWithGrip"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     TitleCharacterCasing="Normal"
     WindowTitleBrush="{DynamicResource PrimaryHueDarkBrush}"
@@ -36,6 +37,7 @@
         <!--  Behaviors  -->
         <bh:ScanButtonBehavior x:Key="ScanCommandBehavior" />
         <bh:DoubleClickBehavior x:Key="DoubleClickBehavior" />
+        <bh:DragMoveBehavior x:Key="DragMoveBehavior" />
 
         <LinearGradientBrush x:Key="SizeGradientStyle" StartPoint="0,0" EndPoint="1,1">
             <GradientStop Offset="0.0" Color="DeepSkyBlue" />
@@ -62,6 +64,10 @@
         </Style>
     </Window.Style>
 
+    <xb:Interaction.Behaviors>
+        <bh:DragMoveBehavior />
+    </xb:Interaction.Behaviors>
+
     <Controls:MetroWindow.LeftWindowCommands>
         <Controls:WindowCommands>
             <ToggleButton
@@ -80,125 +86,239 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="70" />
             <RowDefinition Height="50" />
-            <RowDefinition Height="40" />
             <RowDefinition Height="*" />
             <RowDefinition Height="auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="auto" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <StackPanel Grid.Row="0" Orientation="Horizontal">
-                <StackPanel.Resources>
-                    <Style x:Key="ScanImageStyle" TargetType="Path">
-                        <Setter Property="Data" Value="M 0,0 L 0,10 L 10,5 Z" />
-                        <Setter Property="Fill" Value="LightSkyBlue" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsScanning.Value}" Value="true">
-                                <Setter Property="Data" Value="M 0,0 L 10,0 L 10,10 L 0,10 Z" />
-                                <Setter Property="Fill" Value="Red" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
+        <materialDesign:ColorZone
+            Grid.Row="0"
+            Margin="0"
+            Padding="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Mode="PrimaryDark">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="auto" />
+                </Grid.ColumnDefinitions>
 
-                    <Style x:Key="ScanIconStyle" TargetType="materialDesign:PackIcon">
-                        <Setter Property="Kind" Value="Search" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsScanning.Value}" Value="true">
-                                <Setter Property="Kind" Value="Stop" />
-                                <Setter Property="Foreground" Value="Red" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
+                <StackPanel
+                    Grid.Column="0"
+                    HorizontalAlignment="Left"
+                    Orientation="Horizontal">
+                    <StackPanel.Resources>
+                        <Style x:Key="ScanImageStyle" TargetType="Path">
+                            <Setter Property="Data" Value="M 0,0 L 0,10 L 10,5 Z" />
+                            <Setter Property="Fill" Value="LightSkyBlue" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsScanning.Value}" Value="true">
+                                    <Setter Property="Data" Value="M 0,0 L 10,0 L 10,10 L 0,10 Z" />
+                                    <Setter Property="Fill" Value="Red" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
 
-                    <Style x:Key="ScanTextStyle" TargetType="TextBlock">
-                        <Setter Property="Text" Value="Scan" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsScanning.Value}" Value="true">
-                                <Setter Property="Text" Value="Stop" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Resources>
+                        <Style x:Key="ScanIconStyle" TargetType="materialDesign:PackIcon">
+                            <Setter Property="Kind" Value="Search" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsScanning.Value}" Value="true">
+                                    <Setter Property="Kind" Value="Stop" />
+                                    <Setter Property="Foreground" Value="Red" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
 
-                <ComboBox
-                    x:Name="driveComboBox"
-                    Width="90"
-                    Height="30"
-                    Margin="10,10,10,0"
-                    VerticalAlignment="Top"
-                    materialDesign:ComboBoxAssist.ShowSelectedItem="True"
-                    FontSize="12"
-                    IsEnabled="{Binding IsScanning.Value, Converter={StaticResource InvertBooleanConverter}}"
-                    ItemsSource="{Binding Drives}"
-                    SelectedItem="{Binding SelectedDrive.Value, Mode=TwoWay}"
-                    Style="{StaticResource MaterialDesignComboBox}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Image
-                                    Width="20"
-                                    Height="20"
-                                    Source="{Binding Image}" />
-                                <TextBlock
-                                    Margin="10,0,0,0"
-                                    VerticalAlignment="Center"
-                                    FontSize="16"
-                                    Text="{Binding FullName}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                        <Style x:Key="ScanTextStyle" TargetType="TextBlock">
+                            <Setter Property="Text" Value="Scan" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsScanning.Value}" Value="true">
+                                    <Setter Property="Text" Value="Stop" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Resources>
 
-                <Button
-                    Grid.Row="0"
-                    Width="120"
-                    Height="30"
-                    Margin="10,10,0,0"
-                    VerticalAlignment="Top"
-                    materialDesign:ButtonProgressAssist.IsIndeterminate="True"
-                    materialDesign:ButtonProgressAssist.IsIndicatorVisible="{Binding IsScanning.Value}"
-                    materialDesign:ButtonProgressAssist.Value="-1"
-                    Style="{StaticResource MaterialDesignFlatDarkBgButton}">
-                    <Button.Command>
-                        <MultiBinding Converter="{StaticResource ScanCommandConverter}" UpdateSourceTrigger="Explicit">
-                            <Binding Path="ScanDriveCommand" />
-                            <Binding Path="StopScanDriveCommand" />
-                            <Binding Path="IsScanning.Value" />
-                        </MultiBinding>
-                    </Button.Command>
+                    <ComboBox
+                        x:Name="driveComboBox"
+                        Width="110"
+                        Height="40"
+                        Margin="10,10,10,0"
+                        Padding="15,0,10,0"
+                        VerticalAlignment="Top"
+                        materialDesign:ColorZoneAssist.Mode="Standard"
+                        materialDesign:ComboBoxAssist.ShowSelectedItem="True"
+                        FontSize="12"
+                        IsEnabled="{Binding IsScanning.Value, Converter={StaticResource InvertBooleanConverter}}"
+                        ItemsSource="{Binding Drives}"
+                        SelectedItem="{Binding SelectedDrive.Value, Mode=TwoWay}"
+                        Style="{DynamicResource MaterialDesignOutlinedComboBox}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image
+                                        Width="20"
+                                        Height="20"
+                                        Source="{Binding Image}" />
+                                    <TextBlock
+                                        Margin="10,0,0,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        Text="{Binding Name}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
 
-                    <Button.CommandParameter>
-                        <Binding ElementName="driveComboBox" Path="SelectedValue" />
-                    </Button.CommandParameter>
+                    <Button
+                        Grid.Row="0"
+                        Width="120"
+                        Height="40"
+                        Margin="10,10,0,0"
+                        VerticalAlignment="Top"
+                        materialDesign:ButtonProgressAssist.IsIndeterminate="True"
+                        materialDesign:ButtonProgressAssist.IsIndicatorVisible="{Binding IsScanning.Value}"
+                        materialDesign:ButtonProgressAssist.Value="-1"
+                        Foreground="{DynamicResource MaterialDesignDarkForeground}"
+                        Style="{StaticResource MaterialDesignFlatMidBgButton}">
+                        <Button.Command>
+                            <MultiBinding Converter="{StaticResource ScanCommandConverter}" UpdateSourceTrigger="Explicit">
+                                <Binding Path="ScanDriveCommand" />
+                                <Binding Path="StopScanDriveCommand" />
+                                <Binding Path="IsScanning.Value" />
+                            </MultiBinding>
+                        </Button.Command>
 
-                    <StackPanel Orientation="Horizontal">
-                        <!--<Path
-                            x:Name="ScanImage"
-                            Width="16"
-                            Height="16"
-                            Stretch="UniformToFill"
-                            Style="{StaticResource ScanImageStyle}" />-->
+                        <Button.CommandParameter>
+                            <Binding ElementName="driveComboBox" Path="SelectedValue" />
+                        </Button.CommandParameter>
+
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon
+                                Width="22"
+                                Height="22"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource ScanIconStyle}" />
+                            <TextBlock
+                                Margin="0,0,0,0"
+                                VerticalAlignment="Center"
+                                FontSize="18"
+                                Style="{StaticResource ScanTextStyle}" />
+                        </StackPanel>
+
+                        <xb:Interaction.Behaviors>
+                            <bh:ScanButtonBehavior IsScanning="{Binding IsScanning.Value, Mode=OneWay}" />
+                        </xb:Interaction.Behaviors>
+                    </Button>
+
+                    <Button
+                        Grid.Row="0"
+                        Width="40"
+                        Height="40"
+                        Margin="10,10,0,0"
+                        VerticalAlignment="Top"
+                        Command="{Binding MovePreviousFolderCommand}"
+                        Style="{DynamicResource MaterialDesignIconForegroundButton}">
                         <materialDesign:PackIcon
-                            Width="20"
-                            Height="20"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Style="{StaticResource ScanIconStyle}" />
-                        <TextBlock
-                            Margin="0,0,0,0"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            Style="{StaticResource ScanTextStyle}" />
-                    </StackPanel>
+                            Width="36"
+                            Height="36"
+                            Kind="ArrowTopBold" />
+                    </Button>
+                </StackPanel>
 
-                    <xb:Interaction.Behaviors>
-                        <bh:ScanButtonBehavior IsScanning="{Binding IsScanning.Value, Mode=OneWay}" />
-                    </xb:Interaction.Behaviors>
-                </Button>
-            </StackPanel>
-        </Grid>
+                <materialDesign:ColorZone
+                    Grid.Column="1"
+                    Margin="0,10,10,0"
+                    Padding="10,5,10,5"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    materialDesign:ElevationAssist.Elevation="Dp8"
+                    ClipToBounds="False"
+                    CornerRadius="5"
+                    Foreground="{DynamicResource MaterialDesignDarkForeground}"
+                    Mode="PrimaryDark">
+                    <Grid materialDesign:ColorZoneAssist.Mode="Standard">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="auto" />
+                            <ColumnDefinition Width="auto" />
+                            <ColumnDefinition Width="auto" />
+                            <ColumnDefinition Width="auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto" />
+                            <RowDefinition Height="auto" />
+                            <RowDefinition Height="auto" />
+                            <RowDefinition Height="auto" />
+                        </Grid.RowDefinitions>
+
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            HorizontalAlignment="Right"
+                            FontSize="11"
+                            Text="Volume label： " />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            FontSize="11"
+                            Text="{Binding DriveVolume.Value}" />
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            HorizontalAlignment="Right"
+                            FontSize="11"
+                            Text="Total： " />
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            FontSize="11"
+                            Text="{Binding DriveTotalSize.Value, StringFormat={}{0:N0} KB}" />
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            HorizontalAlignment="Right"
+                            FontSize="11"
+                            Text="Fress space： " />
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            FontSize="11"
+                            Text="{Binding DriveFreeSpace.Value, StringFormat={}{0:N0} KB}" />
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="2"
+                            Margin="20,0,0,0"
+                            HorizontalAlignment="Right"
+                            FontSize="11"
+                            Text="Drive type： " />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="3"
+                            FontSize="11"
+                            Text="{Binding DriveType.Value}" />
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            Margin="20,0,0,0"
+                            HorizontalAlignment="Right"
+                            FontSize="11"
+                            Text="Format： " />
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="3"
+                            FontSize="11"
+                            Text="{Binding DriveFormatType.Value}" />
+                    </Grid>
+                </materialDesign:ColorZone>
+            </Grid>
+        </materialDesign:ColorZone>
 
         <!--<Grid
             Grid.Row="1"
@@ -214,7 +334,7 @@
         <ItemsControl
             x:Name="itemsControlPaths"
             Grid.Row="1"
-            Margin="10,0,10,10"
+            Margin="10,5,10,10"
             ItemsSource="{Binding BreadCrumbDictionaries}">
 
             <ItemsControl.Resources>

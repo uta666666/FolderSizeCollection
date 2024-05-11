@@ -9,6 +9,7 @@ using MahApps.Metro.Controls.Dialogs;
 using MaterialDesignThemes.Wpf;
 using System.Collections.Specialized;
 using System.Text;
+using Reactive.Bindings.Extensions;
 
 namespace FolderSizeExplorer.ViewModels
 {
@@ -32,7 +33,7 @@ namespace FolderSizeExplorer.ViewModels
             _cancelSource = new CancellationTokenSource();
 
             Drives = new ReactiveCollection<DriveData>();
-            foreach (var drive in Directory.GetLogicalDrives().Select(n => new DriveData(n)).OrderBy(n => n.FullName))
+            foreach (var drive in DriveUtil.GetDives().OrderBy(n => n.FullName))
             {
                 Drives.Add(drive);
             }
@@ -53,8 +54,14 @@ namespace FolderSizeExplorer.ViewModels
             SortDirectoryPropertyName = new ReactiveProperty<string>();
             IsSortDirectoryAsc = new ReactiveProperty<bool>();
 
+            DriveVolume = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.Name);
+            DriveFormatType = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.FormatType);
+            DriveType = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.DriveType);
+            DriveFreeSpace = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.FreeSpaceKB);
+            DriveTotalSize = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.TotalSizeKB);
 
-            Files.CollectionChanged += (sender, e) =>
+
+                Files.CollectionChanged += (sender, e) =>
             {
                 if (e.Action == NotifyCollectionChangedAction.Add)
                 {
@@ -64,6 +71,7 @@ namespace FolderSizeExplorer.ViewModels
                     }
                 }
             };
+
             Directories.CollectionChanged += (sender, e) =>
             {
                 if (e.Action == NotifyCollectionChangedAction.Add)
@@ -83,16 +91,16 @@ namespace FolderSizeExplorer.ViewModels
             StopScanDriveCommand.Subscribe(StopScanDrive);
 
             FolderSelectCommand = new ReactiveCommand();
-            FolderSelectCommand.Subscribe(SelectDirectoryAsync);
+            FolderSelectCommand.Subscribe(async () => await SelectDirectoryAsync());
 
             MoveFolderCommand = new ReactiveCommand<string>();
-            MoveFolderCommand.Subscribe(MoveDirectoryAsync);
+            MoveFolderCommand.Subscribe(async path => await MoveDirectoryAsync(path));
 
             SortDirectoryCommand = new ReactiveCommand<string>();
-            SortDirectoryCommand.Subscribe(SortDirectories);
+            SortDirectoryCommand.Subscribe(async propertyName => await SortDirectoriesAsync(propertyName));
 
             SortFileCommand = new ReactiveCommand<string>();
-            SortFileCommand.Subscribe(SortFiles);
+            SortFileCommand.Subscribe(async propertyName => await SortFilesAsync(propertyName));
 
             OpenExplorerCommand = new ReactiveCommand<FileData>();
             OpenExplorerCommand.Subscribe(OpenExplorer);
@@ -102,6 +110,9 @@ namespace FolderSizeExplorer.ViewModels
 
             SwitchThemeCommand = new ReactiveCommand<bool>();
             SwitchThemeCommand.Subscribe(SwitchTheme);
+
+            MovePreviousFolderCommand = new ReactiveCommand();
+            MovePreviousFolderCommand.Subscribe(async () => await MovePreviousAsync());
         }
 
 
@@ -191,7 +202,7 @@ namespace FolderSizeExplorer.ViewModels
         /// <summary>
         /// フォルダ選択
         /// </summary>
-        private async void SelectDirectoryAsync()
+        private async Task SelectDirectoryAsync()
         {
             if (SelectedDirectoryPath.Value == null)
             {
@@ -218,7 +229,7 @@ namespace FolderSizeExplorer.ViewModels
         /// フォルダ選択
         /// </summary>
         /// <param name="path"></param>
-        private async void MoveDirectoryAsync(string path)
+        private async Task MoveDirectoryAsync(string path)
         {
             (AbstractFileData dir, int index) = BreadCrumbDictionaries.Select((data, index) => (data, index)).FirstOrDefault(d => d.data.FullName == path);
             if (dir == null)
@@ -244,7 +255,7 @@ namespace FolderSizeExplorer.ViewModels
         /// ディレクトリ一覧をソートする
         /// </summary>
         /// <param name="sortPropertyName"></param>
-        private async void SortDirectories(string sortPropertyName)
+        private async Task SortDirectoriesAsync(string sortPropertyName)
         {
             IsBusy.Value = true;
             try
@@ -277,7 +288,7 @@ namespace FolderSizeExplorer.ViewModels
         /// <summary>
         /// ファイル一覧をソートする
         /// </summary>
-        private async void SortFiles(string sortPropertyName)
+        private async Task SortFilesAsync(string sortPropertyName)
         {
             IsBusy.Value = true;
             try
@@ -401,6 +412,20 @@ namespace FolderSizeExplorer.ViewModels
         }
 
 
+        private async Task MovePreviousAsync()
+        {
+            if (BreadCrumbDictionaries.Count <= 1)
+            {
+                return;
+            }
+
+            BreadCrumbDictionaries.RemoveAt(BreadCrumbDictionaries.Count - 1);
+            var path = BreadCrumbDictionaries.Last().FullName;
+            SearchDirectory.Value = path;
+            await MoveDirectoryAsync(path);
+        }
+
+
         /// <summary>
         /// テーマを切り替える
         /// </summary>
@@ -489,6 +514,15 @@ namespace FolderSizeExplorer.ViewModels
         public ReactiveProperty<string> SortDirectoryPropertyName { get; set; }
 
         public ReactiveProperty<bool> IsSortDirectoryAsc { get; set; }
+
+        public ReactiveProperty<string> DriveFormatType { get; private set; }
+
+        public ReactiveProperty<long> DriveFreeSpace { get; private set; }
+
+        public ReactiveProperty<long> DriveTotalSize { get; private set; }
+
+        public ReactiveProperty<string> DriveVolume { get; private set; }
+        public ReactiveProperty<string> DriveType { get; private set; }
         #endregion プロパティ
 
 
@@ -510,6 +544,9 @@ namespace FolderSizeExplorer.ViewModels
         public ReactiveCommand<string> SortFileCommand { get; private set; }
 
         public ReactiveCommand<bool> SwitchThemeCommand { get; private set; }
+
+        public ReactiveCommand MovePreviousFolderCommand { get; private set; }
+
         #endregion コマンド
     }
 }

@@ -18,11 +18,15 @@ namespace FolderSizeExplorer.Models
 {
     public class DriveData : AbstractFileData, INotifyPropertyChanged
     {
-        public DriveData(string drivePath)
+        public DriveData(DriveInfo driveInfo)
         {
-            FullName = drivePath;
-            Name = Path.GetFileName(drivePath);
-            Image = FileIconUtil.GetIcon(drivePath, NativeMethods.IconSize.SHGFI_LARGEICON);
+            FullName = driveInfo.Name;
+            Name = driveInfo.Name;
+            Image = FileIconUtil.GetIcon(driveInfo.Name, NativeMethods.IconSize.SHGFI_LARGEICON);
+            FormatType = driveInfo.DriveFormat;
+            FreeSpace = driveInfo.AvailableFreeSpace;
+            TotalSize = driveInfo.TotalSize;
+            DriveType = driveInfo.DriveType.ToString();
 
             SubDirectories = new ObservableCollection<FileData>();
             Files = new ObservableCollection<FileData>();
@@ -38,6 +42,18 @@ namespace FolderSizeExplorer.Models
         public override string FullName { get; }
 
         public override string Name { get; }
+
+        public string FormatType { get; private set; }
+
+        public long FreeSpace { get; private set; }
+
+        public long FreeSpaceKB => FreeSpace / 1024;
+
+        public long TotalSize { get; private set; }
+
+        public long TotalSizeKB => TotalSize / 1024;
+
+        public string DriveType { get; private set; }
 
         public BitmapSource Image { get; set; }
 
@@ -177,7 +193,7 @@ namespace FolderSizeExplorer.Models
                 {
                     return;
                 }
-                
+
                 Files.Clear();
                 MaxLengthFile = 0;
 
