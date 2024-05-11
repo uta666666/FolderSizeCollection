@@ -5,7 +5,7 @@ on:
 env:
   App_Name: FolderSizeExplorer
   Solution_Path: FolderSizeCollection.sln
-  App_Project_Path: src/FolderSizeExplorer/FolderSizeExplorer.csproj
+  App_Project_Path: FolderSizeExplorer/FolderSizeExplorer.csproj
 
 jobs:
   build:
