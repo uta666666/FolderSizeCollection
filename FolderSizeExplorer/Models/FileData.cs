@@ -13,7 +13,7 @@ using FolderSizeExplorer.Utils;
 
 namespace FolderSizeExplorer.Models
 {
-    public class FileData : AbstractFileData, INotifyPropertyChanged
+    public class FileData : AbstractFileData, INotifyPropertyChanged, IComparer<FileData>
     {
         public FileAttributes Attributes { get; }
         public override bool IsFile => (Attributes & FileAttributes.Directory) == 0;
@@ -54,6 +54,9 @@ namespace FolderSizeExplorer.Models
 
         private readonly object _lockSubDirectoriesCount = new object();
         private int _subDirectoriesCount;
+        /// <summary>
+        /// サブフォルダ以下も含めたサブフォルダ数
+        /// </summary>
         public int SubDirectoriesCount
         {
             get { return _subDirectoriesCount; }
@@ -71,8 +74,16 @@ namespace FolderSizeExplorer.Models
             }
         }
 
+        /// <summary>
+        /// フォルダ直下のサブフォルダ数
+        /// </summary>
+        public int SubDirectoriesCountCurrent => SubDirectories.Count;
+
         private readonly object _lockFileCount = new object();
         private int _filesCount;
+        /// <summary>
+        /// サブフォルダ以下も含めたファイル数
+        /// </summary>
         public int FilesCount
         {
             get { return _filesCount; }
@@ -89,6 +100,11 @@ namespace FolderSizeExplorer.Models
                 RaisePropertyChanged();
             }
         }
+
+        /// <summary>
+        /// フォルダ直下のファイル数
+        /// </summary>
+        public int FilesCountCurrent => Files.Count;
 
         public override string Name { get; }
 
@@ -177,7 +193,14 @@ namespace FolderSizeExplorer.Models
 
 
 
-
+        /// <summary>
+        /// フォルダを取得する
+        /// </summary>
+        /// <param name="cancelToken"></param>
+        /// <param name="progress"></param>
+        /// <param name="progressMaxLength"></param>
+        /// <param name="logger"></param>
+        /// <returns></returns>
         public override async Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger)
         {
             await Task.Run(async () =>
@@ -251,6 +274,15 @@ namespace FolderSizeExplorer.Models
             });
         }
 
+
+        /// <summary>
+        /// ファイルを取得する
+        /// </summary>
+        /// <param name="cancelToken"></param>
+        /// <param name="progress"></param>
+        /// <param name="progressMaxLength"></param>
+        /// <param name="logger"></param>
+        /// <returns></returns>
         public override async Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger)
         {
             await Task.Run(() =>
@@ -307,6 +339,26 @@ namespace FolderSizeExplorer.Models
                     return;
                 }
             });
+        }
+
+        public int Compare(FileData? x, FileData? y)
+        {
+            if (x == null && y == null)
+            {
+                return 0;
+            }
+            else if (x == null)
+            {
+                return -1;
+            }
+            else if (y == null)
+            {
+                return 1;
+            }
+            else
+            {
+                return x.Name.CompareTo(y.Name);
+            }
         }
     }
 }

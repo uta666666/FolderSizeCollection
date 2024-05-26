@@ -10,6 +10,9 @@ using MaterialDesignThemes.Wpf;
 using System.Collections.Specialized;
 using System.Text;
 using Reactive.Bindings.Extensions;
+using FolderSizeExplorer.Utils;
+using System.ComponentModel;
+using System.Windows.Data;
 
 namespace FolderSizeExplorer.ViewModels
 {
@@ -38,8 +41,15 @@ namespace FolderSizeExplorer.ViewModels
                 Drives.Add(drive);
             }
             SelectedDrive = new ReactiveProperty<DriveData>(Drives.First());
-            Directories = new ReactiveCollection<FileData>();
-            Files = new ReactiveCollection<FileData>();
+            SortedDirectories = new SortedObservableCollection<FileData>(new FileDataComparer() { PropertyName = "Length", Ascending = false });
+            SortedFiles = new SortedObservableCollection<FileData>(new FileDataComparer() { PropertyName = "Length", Ascending = false });
+            BindingOperations.EnableCollectionSynchronization(SortedDirectories, new object());
+            BindingOperations.EnableCollectionSynchronization(SortedFiles, new object());
+            SortFilePropertyName = new ReactiveProperty<string>("Length");
+            IsSortFileAsc = new ReactiveProperty<bool>(false);
+            SortDirectoryPropertyName = new ReactiveProperty<string>("Length");
+            IsSortDirectoryAsc = new ReactiveProperty<bool>(false);
+
             IsScanning = new ReactiveProperty<bool>();
             MaxLengthFile = new ReactiveProperty<long>(0);
             MaxLengthDirectory = new ReactiveProperty<long>(0);
@@ -49,10 +59,6 @@ namespace FolderSizeExplorer.ViewModels
             SelectedFilePath = new ReactiveProperty<FileData>();
             StatusMessage = new ReactiveProperty<string>();
             IsBusy = new ReactiveProperty<bool>();
-            SortFilePropertyName = new ReactiveProperty<string>();
-            IsSortFileAsc = new ReactiveProperty<bool>();
-            SortDirectoryPropertyName = new ReactiveProperty<string>();
-            IsSortDirectoryAsc = new ReactiveProperty<bool>();
 
             DriveVolume = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.Name);
             DriveFormatType = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.FormatType);
@@ -61,24 +67,24 @@ namespace FolderSizeExplorer.ViewModels
             DriveTotalSize = SelectedDrive.ToReactivePropertyAsSynchronized(x => x.Value.TotalSizeKB);
 
 
-                Files.CollectionChanged += (sender, e) =>
+            SortedFiles.CollectionChanged += (sender, e) =>
             {
                 if (e.Action == NotifyCollectionChangedAction.Add)
                 {
-                    if (SelectedFilePath.Value == null || Files.Count == 1)
+                    if (SelectedFilePath.Value == null || SortedFiles.Count == 1)
                     {
-                        SelectedFilePath.Value = Files.First();
+                        SelectedFilePath.Value = SortedFiles.First();
                     }
                 }
             };
 
-            Directories.CollectionChanged += (sender, e) =>
+            SortedDirectories.CollectionChanged += (sender, e) =>
             {
                 if (e.Action == NotifyCollectionChangedAction.Add)
                 {
-                    if (SelectedDirectoryPath.Value == null || Directories.Count == 1)
+                    if (SelectedDirectoryPath.Value == null || SortedDirectories.Count == 1)
                     {
-                        SelectedDirectoryPath.Value = Directories.First();
+                        SelectedDirectoryPath.Value = SortedDirectories.First();
                     }
                 }
             };
@@ -97,10 +103,10 @@ namespace FolderSizeExplorer.ViewModels
             MoveFolderCommand.Subscribe(async path => await MoveDirectoryAsync(path));
 
             SortDirectoryCommand = new ReactiveCommand<string>();
-            SortDirectoryCommand.Subscribe(async propertyName => await SortDirectoriesAsync(propertyName));
+            SortDirectoryCommand.Subscribe(SortDirectoriesAsync);
 
             SortFileCommand = new ReactiveCommand<string>();
-            SortFileCommand.Subscribe(async propertyName => await SortFilesAsync(propertyName));
+            SortFileCommand.Subscribe(SortFilesAsync);
 
             OpenExplorerCommand = new ReactiveCommand<FileData>();
             OpenExplorerCommand.Subscribe(OpenExplorer);
@@ -132,12 +138,12 @@ namespace FolderSizeExplorer.ViewModels
 
                 BreadCrumbDictionaries.ClearOnScheduler();
                 BreadCrumbDictionaries.AddOnScheduler(SelectedDrive.Value);
-                Directories.ClearOnScheduler();
-                Files.ClearOnScheduler();
+                SortedDirectories.ClearOnScheduler();
+                SortedFiles.ClearOnScheduler();
 
 
                 var progressLogger = new Progress<string>(async message => await Logging(message));
-                var progressGetFiles = new Progress<FileData>(Files.AddOnScheduler);
+                var progressGetFiles = new Progress<FileData>(SortedFiles.AddOnScheduler);
                 var progressChangeMaxLengthFile = new Progress<long>(maxLength =>
                 {
                     MaxLengthFile.Value = maxLength;
@@ -145,7 +151,7 @@ namespace FolderSizeExplorer.ViewModels
                 var taskFile = SelectedDrive.Value.GetFilesAsync(token, progressGetFiles, progressChangeMaxLengthFile, progressLogger);
 
 
-                var progressGetDirectories = new Progress<FileData>(Directories.AddOnScheduler);
+                var progressGetDirectories = new Progress<FileData>(SortedDirectories.AddOnScheduler);
                 var progressChangeMaxLengthDirectory = new Progress<long>(maxLength =>
                 {
                     MaxLengthDirectory.Value = maxLength;
@@ -208,7 +214,7 @@ namespace FolderSizeExplorer.ViewModels
             {
                 return;
             }
-            var dir = Directories.FirstOrDefault(d => d.FullName == SelectedDirectoryPath.Value.FullName);
+            var dir = SortedDirectories.FirstOrDefault(d => d.FullName == SelectedDirectoryPath.Value.FullName);
             if (dir == null)
             {
                 return;
@@ -220,8 +226,8 @@ namespace FolderSizeExplorer.ViewModels
             MaxLengthDirectory.Value = dir.MaxLengthDirectory;
             MaxLengthFile.Value = dir.MaxLengthFile;
 
-            await SetCollectionAsync(Directories, dir.SubDirectories, SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
-            await SetCollectionAsync(Files, dir.Files, SortFilePropertyName.Value, IsSortFileAsc.Value);
+            await SetCollectionAsync(SortedDirectories, dir.SubDirectories, SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
+            await SetCollectionAsync(SortedFiles, dir.Files, SortFilePropertyName.Value, IsSortFileAsc.Value);
         }
 
 
@@ -246,8 +252,8 @@ namespace FolderSizeExplorer.ViewModels
             MaxLengthDirectory.Value = dir.MaxLengthDirectory;
             MaxLengthFile.Value = dir.MaxLengthFile;
 
-            await SetCollectionAsync(Directories, dir.SubDirectories, SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
-            await SetCollectionAsync(Files, dir.Files, SortFilePropertyName.Value, IsSortFileAsc.Value);
+            await SetCollectionAsync(SortedDirectories, dir.SubDirectories, SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
+            await SetCollectionAsync(SortedFiles, dir.Files, SortFilePropertyName.Value, IsSortFileAsc.Value);
         }
 
 
@@ -255,12 +261,12 @@ namespace FolderSizeExplorer.ViewModels
         /// ディレクトリ一覧をソートする
         /// </summary>
         /// <param name="sortPropertyName"></param>
-        private async Task SortDirectoriesAsync(string sortPropertyName)
+        private void SortDirectoriesAsync(string sortPropertyName)
         {
             IsBusy.Value = true;
             try
             {
-                if (Directories.Count == 0)
+                if (SortedDirectories.Count == 0)
                 {
                     return;
                 }
@@ -275,8 +281,9 @@ namespace FolderSizeExplorer.ViewModels
                     SortDirectoryPropertyName.Value = sortPropertyName;
                 }
 
-                await SetCollectionAsync(Directories, Directories.ToList(), SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
-                SelectedDirectoryPath.Value = Directories.First();
+                var comparer = new FileDataComparer(SortDirectoryPropertyName.Value, IsSortDirectoryAsc.Value);
+                SortedDirectories.Sort(comparer);
+                SelectedDirectoryPath.Value = SortedDirectories.First();
             }
             finally
             {
@@ -288,12 +295,12 @@ namespace FolderSizeExplorer.ViewModels
         /// <summary>
         /// ファイル一覧をソートする
         /// </summary>
-        private async Task SortFilesAsync(string sortPropertyName)
+        private void SortFilesAsync(string sortPropertyName)
         {
             IsBusy.Value = true;
             try
             {
-                if (Files.Count == 0)
+                if (SortedFiles.Count == 0)
                 {
                     return;
                 }
@@ -308,8 +315,9 @@ namespace FolderSizeExplorer.ViewModels
                     SortFilePropertyName.Value = sortPropertyName;
                 }
 
-                await SetCollectionAsync(Files, Files.ToList(), SortFilePropertyName.Value, IsSortFileAsc.Value);
-                SelectedFilePath.Value = Files.First();
+                var comparer = new FileDataComparer(SortFilePropertyName.Value, IsSortFileAsc.Value);
+                SortedFiles.Sort(comparer);
+                SelectedFilePath.Value = SortedFiles.First();
             }
             finally
             {
@@ -327,6 +335,22 @@ namespace FolderSizeExplorer.ViewModels
         /// <param name="sortPropertyName"></param>
         /// <param name="isAscending"></param>
         private async Task SetCollectionAsync<T>(ReactiveCollection<T> collection, IEnumerable<T> items, string sortPropertyName, bool isAscending)
+        {
+            await Task.Run(() =>
+            {
+                collection.ClearOnScheduler();
+                if (string.IsNullOrEmpty(sortPropertyName))
+                {
+                    collection.AddRangeOnScheduler(items);
+                }
+                else
+                {
+                    collection.AddRangeOnScheduler(items.AsQueryable().OrderBy($"{sortPropertyName} {(isAscending ? "ascending" : "descending")}"));
+                }
+            });
+        }
+
+        private async Task SetCollectionAsync<T>(SortedObservableCollection<T> collection, IEnumerable<T> items, string sortPropertyName, bool isAscending) where T : class, INotifyPropertyChanged
         {
             await Task.Run(() =>
             {
@@ -493,9 +517,9 @@ namespace FolderSizeExplorer.ViewModels
 
         public ReactiveProperty<FileData> SelectedFilePath { get; set; }
 
-        public ReactiveCollection<FileData> Files { get; set; }
+        public SortedObservableCollection<FileData> SortedFiles { get; set; }
 
-        public ReactiveCollection<FileData> Directories { get; set; }
+        public SortedObservableCollection<FileData> SortedDirectories { get; set; }
 
         public ReactiveProperty<bool> IsScanning { get; set; }
 
