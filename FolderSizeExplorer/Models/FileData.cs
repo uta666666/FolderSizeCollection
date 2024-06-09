@@ -28,10 +28,10 @@ namespace FolderSizeExplorer.Models
 
         private readonly object _lockLength = new object();
         private long _length = 0;
-        public long Length
+        public override long Length
         {
             get { return _length; }
-            private set
+            set
             {
                 lock (_lockLength)
                 {

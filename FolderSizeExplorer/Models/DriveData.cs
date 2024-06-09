@@ -61,6 +61,24 @@ namespace FolderSizeExplorer.Models
 
         public override ObservableCollection<FileData> Files { get; }
 
+        private long _length = 0;
+        public override long Length
+        {
+            get
+            {
+                return _length;
+            }
+            set
+            {
+                if (_length == value)
+                {
+                    return;
+                }
+                _length = value;
+                RaisePropertyChanged();
+            }
+        }
+
         private long _maxLengthFile = 0;
         public override long MaxLengthFile
         {
@@ -159,6 +177,7 @@ namespace FolderSizeExplorer.Models
                         var progressMaxLengthSubDir = new Progress<long>(_ => { });
                         await dir.GetFilesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir, logger);
                         await dir.GetDirectoriesAsync(cancelToken, progressSubDir, progressMaxLengthSubDir, logger);
+                        Length += dir.Length;
                     }
                 }
                 catch (UnauthorizedAccessException ex)
@@ -202,6 +221,7 @@ namespace FolderSizeExplorer.Models
                     foreach (var file in DirectoryUtil.EnumerateFilesData(FullName))
                     {
                         Files.Add(file);
+                        Length += file.Length;
                         progress.Report(file);
 
                         if (file.Length > MaxLengthFile)

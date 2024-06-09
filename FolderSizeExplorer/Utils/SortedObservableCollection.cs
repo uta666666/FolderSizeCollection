@@ -73,8 +73,11 @@ namespace FolderSizeExplorer.Utils
         /// <returns></returns>
         public int LastIndexOf(T item)
         {
-            // return this.Where(x => x != item && Comparer.Compare(x, item) <= 0).Select((data, index) => index).Max(x => (int?)x) ?? -1;
-            return this.ToList().Select((data, index) => new { data, index }).LastOrDefault(x => x.data != item && Comparer.Compare(x.data, item) <= 0)?.index ?? -1;
+            lock (_lockobj)
+            {
+                // return this.Where(x => x != item && Comparer.Compare(x, item) <= 0).Select((data, index) => index).Max(x => (int?)x) ?? -1;
+                return this.ToList().Select((data, index) => new { data, index }).LastOrDefault(x => x.data != item && Comparer.Compare(x.data, item) <= 0)?.index ?? -1;
+            }
         }
 
         /// <summary>
@@ -86,7 +89,10 @@ namespace FolderSizeExplorer.Utils
         {
             // 後ろにつける
             var index = LastIndexOf(item) + 1;
-            base.InsertItem(index, item);
+            lock (_lockobj)
+            {
+                base.InsertItem(index, item);
+            }
             item.PropertyChanged += OnPropertyChanged;
         }
 
@@ -107,12 +113,18 @@ namespace FolderSizeExplorer.Utils
                 }
                 if (oldIndex != targetIndex)
                 {
-                    base.MoveItem(oldIndex, targetIndex);
+                    lock (_lockobj)
+                    {
+                        base.MoveItem(oldIndex, targetIndex);
+                    }
                 }
             }
             else
             {
-                base.MoveItem(oldIndex, 0);//最初に移動
+                lock (_lockobj)
+                {
+                    base.MoveItem(oldIndex, 0);//最初に移動
+                }
             }
         }
 
@@ -123,7 +135,10 @@ namespace FolderSizeExplorer.Utils
         protected override void RemoveItem(int index)
         {
             this[index].PropertyChanged -= OnPropertyChanged;
-            base.RemoveItem(index);
+            lock (_lockobj)
+            {
+                base.RemoveItem(index);
+            }
         }
 
         /// <summary>
@@ -135,7 +150,10 @@ namespace FolderSizeExplorer.Utils
             {
                 item.PropertyChanged -= OnPropertyChanged; // イベント変更通知を解除
             }
-            base.ClearItems();
+            lock (_lockobj)
+            {
+                base.ClearItems();
+            }
         }
 
         /// <summary>
@@ -146,7 +164,10 @@ namespace FolderSizeExplorer.Utils
         protected override void SetItem(int index, T item)
         {
             base.SetItem(index, item);
-            base.MoveItem(index, 0);//第二引数は使わないので適当
+            lock (_lockobj)
+            {
+                base.MoveItem(index, 0);//第二引数は使わないので適当
+            }
         }
 
         private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)

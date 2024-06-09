@@ -13,6 +13,7 @@ using Reactive.Bindings.Extensions;
 using FolderSizeExplorer.Utils;
 using System.ComponentModel;
 using System.Windows.Data;
+using System.Collections.ObjectModel;
 
 namespace FolderSizeExplorer.ViewModels
 {
@@ -41,6 +42,9 @@ namespace FolderSizeExplorer.ViewModels
                 Drives.Add(drive);
             }
             SelectedDrive = new ReactiveProperty<DriveData>(Drives.First());
+            SelectedFolderSize = new ReactiveProperty<long>(0);
+            SelectedFileSize = new ReactiveProperty<long>(0);
+            CurrentFolderSize = new ReactiveProperty<long>(0);
             SortedDirectories = new SortedObservableCollection<FileData>(new FileDataComparer() { PropertyName = "Length", Ascending = false });
             SortedFiles = new SortedObservableCollection<FileData>(new FileDataComparer() { PropertyName = "Length", Ascending = false });
             BindingOperations.EnableCollectionSynchronization(SortedDirectories, new object());
@@ -49,7 +53,8 @@ namespace FolderSizeExplorer.ViewModels
             IsSortFileAsc = new ReactiveProperty<bool>(false);
             SortDirectoryPropertyName = new ReactiveProperty<string>("Length");
             IsSortDirectoryAsc = new ReactiveProperty<bool>(false);
-
+            SelectedFolders = new ObservableCollection<AbstractFileData>();
+            SelectedFiles = new ObservableCollection<AbstractFileData>();
             IsScanning = new ReactiveProperty<bool>();
             MaxLengthFile = new ReactiveProperty<long>(0);
             MaxLengthDirectory = new ReactiveProperty<long>(0);
@@ -88,6 +93,35 @@ namespace FolderSizeExplorer.ViewModels
                     }
                 }
             };
+
+            SelectedDirectoryPath.Subscribe(async x => await Task.Run(() =>
+            {
+                SelectedFolderSize.Value = x?.LengthKB ?? 0;
+            }));
+
+            SelectedFolders.CollectionChangedAsObservable().Subscribe(x =>
+            {
+                if (SelectedFolders.Count > 0)
+                {
+                    SelectedFolderSize.Value = SelectedFolders.Sum(i => i.Length) / 1024;
+                }
+                else
+                {
+                    SelectedFolderSize.Value = 0;
+                }
+            });
+
+            SelectedFiles.CollectionChangedAsObservable().Subscribe(x =>
+            {
+                if (SelectedFiles.Count > 0)
+                {
+                    SelectedFileSize.Value = SelectedFiles.Sum(i => i.Length) / 1024;
+                }
+                else
+                {
+                    SelectedFileSize.Value = 0;
+                }
+            });
 
 
             ScanDriveCommand = new ReactiveCommand();
@@ -141,6 +175,12 @@ namespace FolderSizeExplorer.ViewModels
                 SortedDirectories.ClearOnScheduler();
                 SortedFiles.ClearOnScheduler();
 
+                _currentFileData = SelectedDrive.Value;
+                SelectedDrive.Value.PropertyChangedAsObservable().Subscribe(x =>
+                {
+                    CurrentFolderSize.Value = SelectedDrive.Value.Length / 1024;
+                });
+                SelectedDrive.Value.Length = 0;
 
                 var progressLogger = new Progress<string>(async message => await Logging(message));
                 var progressGetFiles = new Progress<FileData>(SortedFiles.AddOnScheduler);
@@ -160,6 +200,7 @@ namespace FolderSizeExplorer.ViewModels
 
 
                 await Task.WhenAll(taskFile, taskDirectory);
+                CurrentFolderSize.Value = SelectedDrive.Value.Length / 1024;
             }
             finally
             {
@@ -204,6 +245,7 @@ namespace FolderSizeExplorer.ViewModels
             }
         }
 
+        private AbstractFileData _currentFileData;
 
         /// <summary>
         /// フォルダ選択
@@ -221,6 +263,8 @@ namespace FolderSizeExplorer.ViewModels
             }
 
             SearchDirectory.Value = SelectedDirectoryPath.Value.FullName;
+            _currentFileData = SelectedDirectoryPath.Value;
+            CurrentFolderSize.Value = SelectedDirectoryPath.Value.Length / 1024;
             BreadCrumbDictionaries.Add(SelectedDirectoryPath.Value);
 
             MaxLengthDirectory.Value = dir.MaxLengthDirectory;
@@ -248,6 +292,8 @@ namespace FolderSizeExplorer.ViewModels
                 BreadCrumbDictionaries.RemoveAt(i);
             }
             SearchDirectory.Value = dir.IsDrive ? dir.ToString() : dir.FullName;
+            _currentFileData = dir;
+            CurrentFolderSize.Value = dir.Length / 1024;
 
             MaxLengthDirectory.Value = dir.MaxLengthDirectory;
             MaxLengthFile.Value = dir.MaxLengthFile;
@@ -517,6 +563,10 @@ namespace FolderSizeExplorer.ViewModels
 
         public ReactiveProperty<FileData> SelectedFilePath { get; set; }
 
+        public ObservableCollection<AbstractFileData> SelectedFolders { get; set; }
+
+        public ObservableCollection<AbstractFileData> SelectedFiles { get; set; }
+
         public SortedObservableCollection<FileData> SortedFiles { get; set; }
 
         public SortedObservableCollection<FileData> SortedDirectories { get; set; }
@@ -547,6 +597,12 @@ namespace FolderSizeExplorer.ViewModels
 
         public ReactiveProperty<string> DriveVolume { get; private set; }
         public ReactiveProperty<string> DriveType { get; private set; }
+
+        public ReactiveProperty<long> CurrentFolderSize { get; private set; }
+
+        public ReactiveProperty<long> SelectedFolderSize { get; private set; }
+
+        public ReactiveProperty<long> SelectedFileSize { get; private set; }
         #endregion プロパティ
 
 

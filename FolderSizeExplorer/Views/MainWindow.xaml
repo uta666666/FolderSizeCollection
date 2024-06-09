@@ -148,13 +148,12 @@
                     <ComboBox
                         x:Name="driveComboBox"
                         Width="110"
-                        Height="40"
+                        Height="35"
                         Margin="10,10,10,0"
                         Padding="15,0,10,0"
                         VerticalAlignment="Top"
                         materialDesign:ColorZoneAssist.Mode="Standard"
                         materialDesign:ComboBoxAssist.ShowSelectedItem="True"
-                        FontSize="12"
                         IsEnabled="{Binding IsScanning.Value, Converter={StaticResource InvertBooleanConverter}}"
                         ItemsSource="{Binding Drives}"
                         SelectedItem="{Binding SelectedDrive.Value, Mode=TwoWay}"
@@ -169,7 +168,7 @@
                                     <TextBlock
                                         Margin="10,0,0,0"
                                         VerticalAlignment="Center"
-                                        FontSize="16"
+                                        FontSize="14"
                                         Text="{Binding Name}" />
                                 </StackPanel>
                             </DataTemplate>
@@ -179,7 +178,7 @@
                     <Button
                         Grid.Row="0"
                         Width="120"
-                        Height="40"
+                        Height="35"
                         Margin="10,10,0,0"
                         VerticalAlignment="Top"
                         materialDesign:ButtonProgressAssist.IsIndeterminate="True"
@@ -209,7 +208,7 @@
                             <TextBlock
                                 Margin="0,0,0,0"
                                 VerticalAlignment="Center"
-                                FontSize="18"
+                                FontSize="16"
                                 Style="{StaticResource ScanTextStyle}" />
                         </StackPanel>
 
@@ -388,9 +387,11 @@
             <ListView
                 ItemsSource="{Binding SortedDirectories}"
                 SelectedItem="{Binding SelectedDirectoryPath.Value, Mode=TwoWay}"
+                SelectionMode="Extended"
                 Tag="{Binding MaxLengthDirectory.Value, Mode=TwoWay}">
                 <xb:Interaction.Behaviors>
                     <bh:DoubleClickBehavior Command="{Binding FolderSelectCommand}" />
+                    <bh:MultiSelectBehavior SelectedItems="{Binding SelectedFolders, Mode=TwoWay}" />
                 </xb:Interaction.Behaviors>
 
                 <ListView.ItemContainerStyle>
@@ -701,8 +702,13 @@
         <Grid Grid.Row="4" Margin="10,5,10,0">
             <ListView
                 ItemsSource="{Binding SortedFiles}"
+                SelectionMode="Extended"
                 SelectedItem="{Binding SelectedFilePath.Value, Mode=TwoWay}"
                 Tag="{Binding MaxLengthFile.Value, Mode=TwoWay}">
+                <xb:Interaction.Behaviors>
+                    <bh:MultiSelectBehavior SelectedItems="{Binding SelectedFiles, Mode=TwoWay}" />
+                </xb:Interaction.Behaviors>
+
                 <ListView.ItemContainerStyle>
                     <Style BasedOn="{StaticResource MahApps.Styles.ListViewItem}" TargetType="ListViewItem">
                         <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListView}}" />
@@ -972,8 +978,28 @@
 
         <Grid Grid.Row="5" Margin="0">
             <StatusBar Height="27">
-                <DockPanel Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=StatusBar}}">
+                <DockPanel Width="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=StatusBar}}" LastChildFill="False">
                     <TextBlock Margin="10,0,10,0" Text="{Binding StatusMessage.Value}" />
+                    <TextBlock
+                        MinWidth="90"
+                        Margin="0,0,25,0"
+                        DockPanel.Dock="Right"
+                        Text="{Binding CurrentFolderSize.Value, StringFormat={}{0:N0} KB}"
+                        TextAlignment="Right" />
+                    <StackPanel
+                        Margin="0,0,20,0"
+                        DockPanel.Dock="Right"
+                        Orientation="Horizontal">
+                        <materialDesign:PackIcon Margin="0,0,5,0" Kind="FolderCheck" />
+                        <TextBlock MinWidth="80" Text="{Binding SelectedFolderSize.Value, StringFormat={}{0:N0} KB}" />
+                    </StackPanel>
+                    <StackPanel
+                        Margin="0,0,20,0"
+                        DockPanel.Dock="Right"
+                        Orientation="Horizontal">
+                        <materialDesign:PackIcon Margin="0,0,5,0" Kind="FileCheck" />
+                        <TextBlock MinWidth="80" Text="{Binding SelectedFileSize.Value, StringFormat={}{0:N0} KB}" />
+                    </StackPanel>
                 </DockPanel>
             </StatusBar>
         </Grid>

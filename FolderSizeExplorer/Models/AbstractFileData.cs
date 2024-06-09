@@ -27,6 +27,8 @@ namespace FolderSizeExplorer.Models
 
         public abstract long MaxLengthFile { get; set; }
 
+        public abstract long Length { get; set; }
+
         public abstract Task GetDirectoriesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger);
 
         public abstract Task GetFilesAsync(CancellationToken cancelToken, IProgress<FileData> progress, IProgress<long> progressMaxLength, IProgress<string> logger);
